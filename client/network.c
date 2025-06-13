@@ -5,9 +5,10 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <stdbool.h>
 
 
-void login(int sockfd, const char* login, const char* password) {
+bool login(int sockfd, const char* login, const char* password) {
     TLVMessage msg;
     msg.type = MSG_LOGIN;
 
@@ -40,27 +41,29 @@ void login(int sockfd, const char* login, const char* password) {
     ssize_t header_bytes = read(sockfd, &response, sizeof(response.type) + sizeof(response.length));
     if (header_bytes < 0) {
         perror("read");
-        return;
+        return false;
     } else if (header_bytes == 0) {
         printf("Serwer zamknął połączenie.\n");
-        return;
+        return false;
     }
     if (response.length > MAX_PAYLOAD) {
         fprintf(stderr, "Odpowiedź serwera jest zbyt długa (%u bajtów)\n", response.length);
-        return;
+        return false;
     }
     ssize_t value_bytes = read(sockfd, response.value, response.length);
     if (value_bytes != response.length) {
         fprintf(stderr, "Nieprawidłowa liczba bajtów od serwera\n");
-        return;
+        return false;
     }
     if (response.type == MSG_LOGIN_SUCCESS) {
         printf("Zalogowano pomyślnie!\n");
+        return true;
     } else if (response.type == MSG_LOGIN_FAILURE) {
         printf("Błąd logowania. Sprawdź login i hasło.\n");
     } else {
         printf("Otrzymano nieznany typ wiadomości: %u\n", response.type);
     }
+    return false;
 }
 
 void register_account(int sockfd, const char* login, const char* password){

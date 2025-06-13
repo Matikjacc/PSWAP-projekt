@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include "auth.h"
 
-User users[MAX_USERS];
+User users_auth[MAX_USERS];
 int user_count = 0;
 
 static int file_exists(const char* filename) {
@@ -26,11 +26,11 @@ int load_users(const char* filename) {
     user_count = 0;
 
     while (fscanf(file, "%31[^;];%31[^;];%d;%d;%d\n",
-                  users[user_count].login,
-                  users[user_count].password,
-                  &users[user_count].games_played,
-                  &users[user_count].games_won,
-                  &users[user_count].games_lost) == 5) {
+                  users_auth[user_count].login,
+                  users_auth[user_count].password,
+                  &users_auth[user_count].games_played,
+                  &users_auth[user_count].games_won,
+                  &users_auth[user_count].games_lost) == 5) {
         user_count++;
         if (user_count >= MAX_USERS) break;
     }
@@ -45,11 +45,11 @@ int save_users(const char* filename) {
 
     for (int i = 0; i < user_count; i++) {
         fprintf(file, "%s;%s;%d;%d;%d\n",
-                users[i].login,
-                users[i].password,
-                users[i].games_played,
-                users[i].games_won,
-                users[i].games_lost);
+                users_auth[i].login,
+                users_auth[i].password,
+                users_auth[i].games_played,
+                users_auth[i].games_won,
+                users_auth[i].games_lost);
     }
 
     fclose(file);
@@ -58,7 +58,7 @@ int save_users(const char* filename) {
 
 int find_user(const char* login) {
     for (int i = 0; i < user_count; i++) {
-        if (strcmp(users[i].login, login) == 0)
+        if (strcmp(users_auth[i].login, login) == 0)
             return i;
     }
     return -1;
@@ -67,7 +67,7 @@ int find_user(const char* login) {
 int authenticate_user(const char* login, const char* password) {
     int idx = find_user(login);
     if (idx == -1) return -1;
-    if (strcmp(users[idx].password, password) == 0)
+    if (strcmp(users_auth[idx].password, password) == 0)
         return idx;
     return -1;
 }
@@ -76,11 +76,11 @@ int register_user(const char* login, const char* password) {
     if (user_count >= MAX_USERS) return -1;
     if (find_user(login) != -1) return -2;  // Login zajęty
 
-    strncpy(users[user_count].login, login, MAX_NAME_LEN);
-    strncpy(users[user_count].password, password, MAX_PASS_LEN);
-    users[user_count].games_played = 0;
-    users[user_count].games_won = 0;
-    users[user_count].games_lost = 0;
+    strncpy(users_auth[user_count].login, login, MAX_NAME_LEN);
+    strncpy(users_auth[user_count].password, password, MAX_PASS_LEN);
+    users_auth[user_count].games_played = 0;
+    users_auth[user_count].games_won = 0;
+    users_auth[user_count].games_lost = 0;
     user_count++;
 
     return save_users(USER_DB_FILE);

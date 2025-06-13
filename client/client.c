@@ -40,7 +40,29 @@ int main() {
 
     printf("Połączono z serwerem %s:%d\n", SERVER_IP, SERVER_PORT);
 
-    authenticate(sockfd);
+    if(!authenticate(sockfd)){
+        printf("Nie udało się uwierzytelnić. Zamykanie połączenia.\n");
+        close(sockfd);
+        return 1;
+    }
+
+    while (true) {
+        int option = get_menu_option();
+        if (option == OPTION_EXIT_GAME) {
+            printf("Zamykanie połączenia.\n");
+            break;
+        }
+        if (option == OPTION_PLAY) {
+            // Implement game logic here
+            printf("Rozpoczynanie gry...\n");
+            // For now, just simulate a game start
+            sleep(2);
+            printf("Gra rozpoczęta!\n");
+        } else if (option == OPTION_VIEW_STATS) {
+            get_statistics(sockfd);
+        }
+    }
+
 
     close(sockfd);
     return 0;

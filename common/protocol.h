@@ -12,6 +12,7 @@ typedef enum {
     MSG_MOVE,
     MSG_RESULT,
     MSG_RANKING,
+    MSG_RANKING_RESPONSE,
     MSG_HISTORY,
     MSG_ERROR
 } MessageType;

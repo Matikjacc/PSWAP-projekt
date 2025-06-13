@@ -11,6 +11,7 @@
 
 #include "auth.h"
 #include "protocol.h"
+#include "ranking.h"
 
 #define PORT 1234
 #define BACKLOG 10
@@ -92,7 +93,33 @@ void handle_client_message(int client_fd) {
             msg.length = 0;
             send(client_fd, &msg, sizeof(msg.type) + sizeof(msg.length), 0);
         }
-    } else {
+    } else if(msg.type == MSG_RANKING) {
+        printf("Otrzymano żądanie rankingu.\n");
+        char* ranking = get_statistics();
+        if (ranking == NULL) {
+            fprintf(stderr, "Błąd podczas pobierania rankingu.\n");
+            msg.type = MSG_ERROR;
+            msg.length = 0;
+            send(client_fd, &msg, sizeof(msg.type) + sizeof(msg.length), 0);
+            return;
+        }
+
+        size_t ranking_len = strlen(ranking) + 1; 
+        strncpy(msg.value, ranking, MAX_PAYLOAD - 1);
+        msg.value[MAX_PAYLOAD - 1] = '\0'; 
+        
+        msg.type = MSG_RANKING_RESPONSE;
+        msg.length = ranking_len;
+
+        ssize_t total_size = sizeof(msg.type) + sizeof(msg.length) + msg.length;
+        if (send(client_fd, &msg, total_size, 0) < 0) {
+            perror("send ranking");
+            return;
+        }
+
+        printf("Wysłano odpowiedź z rankingiem:\n%s\n", ranking);
+    } 
+    else {
         fprintf(stderr, "Nieznany typ wiadomości: %u\n", msg.type);
     }
 }

@@ -14,7 +14,7 @@ typedef struct {
     int games_lost;
 } User;
 
-extern User users[MAX_USERS];
+extern User users_auth[MAX_USERS];
 extern int user_count;
 
 int load_users(const char* filename);
