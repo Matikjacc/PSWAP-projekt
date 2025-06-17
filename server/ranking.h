@@ -9,6 +9,7 @@ struct user {
     int games_played;
     int games_won;
     int games_lost;
+    int id;
 };
 
 extern struct user users[MAX_USERS];  // Declare as extern

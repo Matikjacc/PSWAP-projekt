@@ -2,26 +2,7 @@
 #define GAME_H
 
 #define BOARD_SIZE 3
-
-typedef enum {
-    EMPTY = 0,
-    PLAYER_X,
-    PLAYER_O
-} Cell;
-
-typedef enum {
-    IN_PROGRESS,
-    DRAW,
-    WIN_X,
-    WIN_O
-} GameStatus;
-
-typedef struct {
-    int id;
-    Cell board[BOARD_SIZE][BOARD_SIZE];
-    Cell current_turn;
-    GameStatus status;
-} Game;
+#include "../common/game.h"
 
 void game_init(Game *game);
 

@@ -13,8 +13,9 @@ typedef enum {
 } LobbyStatus;
 
 typedef struct {
-    int player_fds[MAX_PLAYERS_PER_LOBBY];  // sockety graczy
+    Player players[MAX_PLAYERS_PER_LOBBY];  // sockety graczy
     int player_count;
+    int id;
     LobbyStatus status;
     Game game;
 } Lobby;

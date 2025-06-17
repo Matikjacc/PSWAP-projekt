@@ -9,6 +9,8 @@ typedef enum {
     MSG_REGISTER_SUCCESS,
     MSG_REGISTER_FAILURE,
     MSG_JOIN_LOBBY,
+    MSG_JOIN_LOBBY_SUCCESS,
+    MSG_ALL_LOBBIES_FULL,
     MSG_MOVE,
     MSG_RESULT,
     MSG_RANKING,
@@ -22,3 +24,12 @@ typedef struct {
     uint16_t length;
     char value[MAX_PAYLOAD];
 } __attribute__((packed)) TLVMessage;
+
+typedef struct {
+    int id;
+    char login[32];
+} UserInfo;
+
+typedef struct {
+    int client_id;
+} StartGameMessage;

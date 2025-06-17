@@ -1,9 +1,41 @@
 #include <stdio.h>
 #include <string.h>
 #include "game.h"
-#include "../common/game.h"
+#include "../common/protocol.h"
+#include <netinet/in.h>
+#include <stdlib.h>
 
-void game_client_init(Game *game) {
+void game_client_init(int sockfd) {
+    Game *game = malloc(sizeof(Game));
+    TLVMessage msg;
+    msg.type = MSG_JOIN_LOBBY;
+    msg.length = 0;
+    memset(game, 0, sizeof(Game));
+
+    game->id = -1; // Initialize game ID to an invalid value
+    game->current_turn = CELL_X; // Start with player X
+    game->status = IN_PROGRESS; // Game starts in progress
+
+    //send the join lobby message
+    ssize_t total_size = sizeof(msg.type) + sizeof(msg.length);
+    if (send(sockfd, &msg, total_size, 0) < 0) {
+        perror("send join lobby");
+        free(game);
+        return;
+    }
+
+    // receive the game message
+    ssize_t bytes_received = recv(sockfd, &msg, sizeof(msg.type) + sizeof(msg.length), 0);
+    if (bytes_received < 0) {
+        if(msg.type == MSG_ALL_LOBBIES_FULL) {
+            fprintf(stderr, "Wszystkie lobby są pełne.\n");
+        } else {
+            perror("recv join lobby");
+        }
+        free(game);
+        return;
+    }
+
     for (int i = 0; i < BOARD_SIZE; ++i)
         for (int j = 0; j < BOARD_SIZE; ++j)
             game->board[i][j] = CELL_EMPTY;

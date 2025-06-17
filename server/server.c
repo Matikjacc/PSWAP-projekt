@@ -12,6 +12,7 @@
 #include "auth.h"
 #include "protocol.h"
 #include "ranking.h"
+#include "lobby.h"
 
 #define PORT 1234
 #define BACKLOG 10
@@ -68,11 +69,8 @@ void handle_client_message(int client_fd) {
         const char* login = msg.value;
         const char* password = msg.value + strlen(login) + 1;
         printf("Login: \"%s\", Hasło: \"%s\"\n", login, password);
-        if (authenticate_user(login, password) == 0) {
+        if (authenticate_user(login, password, client_fd) == 0) {
             printf("Użytkownik \"%s\" zalogowany pomyślnie.\n", login);
-            msg.type = MSG_LOGIN_SUCCESS;
-            msg.length = 0;
-            send(client_fd, &msg, sizeof(msg.type) + sizeof(msg.length), 0);
         } else {
             printf("Błąd logowania dla użytkownika \"%s\".\n", login);
             msg.type = MSG_LOGIN_FAILURE;
@@ -82,11 +80,8 @@ void handle_client_message(int client_fd) {
     } else if (msg.type == MSG_REGISTER) {
         const char* login = msg.value;
         const char* password = msg.value + strlen(login) + 1;
-        if (register_user(login, password) == 0) {
+        if (register_user(login, password, client_fd) == 0) {
             printf("Użytkownik \"%s\" zarejestrowany pomyślnie.\n", login);
-            msg.type = MSG_REGISTER_SUCCESS;
-            msg.length = 0;
-            send(client_fd, &msg, sizeof(msg.type) + sizeof(msg.length), 0);
         } else {
             printf("Błąd rejestracji użytkownika \"%s\".\n", login);
             msg.type = MSG_REGISTER_FAILURE;
@@ -118,8 +113,10 @@ void handle_client_message(int client_fd) {
         }
 
         printf("Wysłano odpowiedź z rankingiem:\n%s\n", ranking);
-    } 
-    else {
+    }else if(msg.type == MSG_JOIN_LOBBY) {
+        printf("Klient chce dołączyć do lobby.\n");
+        lobby_join(client_fd);
+    }else {
         fprintf(stderr, "Nieznany typ wiadomości: %u\n", msg.type);
     }
 }

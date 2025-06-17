@@ -8,10 +8,11 @@
 
 #include "protocol.h"
 #include "ui.h"
+#include "game.h"
+#include "client.h"
 
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 1234
-
 
 
 int main() {
@@ -53,9 +54,7 @@ int main() {
             break;
         }
         if (option == OPTION_PLAY) {
-            // Implement game logic here
-            printf("Rozpoczynanie gry...\n");
-            // For now, just simulate a game start
+            game_client_init(sockfd);
             sleep(2);
             printf("Gra rozpoczęta!\n");
         } else if (option == OPTION_VIEW_STATS) {

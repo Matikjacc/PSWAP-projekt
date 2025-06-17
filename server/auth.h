@@ -12,6 +12,7 @@ typedef struct {
     int games_played;
     int games_won;
     int games_lost;
+    int player_id;
 } User;
 
 extern User users_auth[MAX_USERS];
@@ -20,7 +21,7 @@ extern int user_count;
 int load_users(const char* filename);
 int save_users(const char* filename);
 int find_user(const char* login);
-int authenticate_user(const char* login, const char* password);
-int register_user(const char* login, const char* password);
+int authenticate_user(const char* login, const char* password, int sockfd);
+int register_user(const char* login, const char* password, int sockfd);
 
 #endif
