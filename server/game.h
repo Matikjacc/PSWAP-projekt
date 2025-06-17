@@ -2,26 +2,11 @@
 #define GAME_H
 
 #define BOARD_SIZE 3
+#define MAX_LOBBIES 10
+#include "../common/game.h"
+#include "lobby.h"
 
-typedef enum {
-    EMPTY = 0,
-    PLAYER_X,
-    PLAYER_O
-} Cell;
-
-typedef enum {
-    IN_PROGRESS,
-    DRAW,
-    WIN_X,
-    WIN_O
-} GameStatus;
-
-typedef struct {
-    int id;
-    Cell board[BOARD_SIZE][BOARD_SIZE];
-    Cell current_turn;
-    GameStatus status;
-} Game;
+Lobby lobbies[MAX_LOBBIES];
 
 void game_init(Game *game);
 

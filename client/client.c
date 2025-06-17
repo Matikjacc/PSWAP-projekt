@@ -5,13 +5,12 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <stdbool.h>
 
-#include "protocol.h"
-#include "ui.h"
+#include "client.h"
 
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 1234
-
 
 
 int main() {
@@ -53,11 +52,7 @@ int main() {
             break;
         }
         if (option == OPTION_PLAY) {
-            // Implement game logic here
-            printf("Rozpoczynanie gry...\n");
-            // For now, just simulate a game start
-            sleep(2);
-            printf("Gra rozpoczęta!\n");
+            game_client_init(sockfd);
         } else if (option == OPTION_VIEW_STATS) {
             get_statistics(sockfd);
         }

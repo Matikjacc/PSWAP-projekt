@@ -2,6 +2,7 @@
 #define UI_H
 
 #include <stdbool.h>
+#include "network.h"
 
 typedef enum{
     OPTION_LOGIN = 1,

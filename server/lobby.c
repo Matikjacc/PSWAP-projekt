@@ -1,53 +1,145 @@
 #include <string.h>
+#include <stdlib.h>
+#include <sys/socket.h>
 #include "lobby.h"
+#include "../common/protocol.h"
+#include <stdio.h>
 
-static Lobby lobbies[MAX_LOBBIES];
+Lobby lobbies[MAX_LOBBIES];
 
 void lobby_init_all() {
-    for (int i = 0; i < MAX_LOBBIES; ++i) {
+    for (int i = 0; i < MAX_LOBBIES; i++) {
+        lobbies[i].lobby_id = -1;
+        // Fix: Use proper pointer arithmetic for player_fd array
+        memset(&lobbies[i].players->player_fd, -1, sizeof(lobbies[i].players->player_fd));
         lobbies[i].player_count = 0;
         lobbies[i].status = LOBBY_WAITING;
-        memset(lobbies[i].player_fds, -1, sizeof(lobbies[i].player_fds));
-        game_server_init(&lobbies[i].game);  // zakładamy, że masz game_server_init
+        lobbies[1].game.game_id = -1;
+        memset(&lobbies[i].game.board, CELL_EMPTY, sizeof(lobbies[i].game.board));
+        lobbies[i].game.current_turn = CELL_X;
+
     }
 }
 
-int lobby_join(int player_fd) {
+int lobby_join(int player_fd, int player_id) {
+    TLVMessage msg;
     for (int i = 0; i < MAX_LOBBIES; ++i) {
         Lobby *lobby = &lobbies[i];
 
         if (lobby->status == LOBBY_WAITING && lobby->player_count < MAX_PLAYERS_PER_LOBBY) {
-            lobby->player_fds[lobby->player_count++] = player_fd;
+            lobby->players[lobby->player_count++].player_fd = player_fd;
+            lobby->players[lobby->player_count - 1].player_id = player_id;
 
+            GameInfo game_info;
+            Game *game = &lobby->game;
+            
+            
+            if (lobby->player_count == 1) {
+                lobby->status = LOBBY_WAITING;
+                lobby->lobby_id = rand();
+                lobby->game.game_id = rand();
+                game_info.game.game_id = lobby->game.game_id;
+                printf("Tworzę nowe lobby o ID: %d\n", lobby->lobby_id);
+                game->current_turn = CELL_X;
+                game->status = IN_PROGRESS;
+                lobby->game.status = IN_PROGRESS;
+                game_init(game);
+            }
             if (lobby->player_count == MAX_PLAYERS_PER_LOBBY) {
-                lobby->status = LOBBY_PLAYING;
-                game_server_init(&lobby->game);
-                // można dodać start gry itp.
+                lobby->status = LOBBY_START;
             }
 
-            return i;  // indeks lobby, do którego dołączono
+            game_info.status = lobby->status;
+            game_info.lobby_id = lobby->lobby_id;
+            msg.length = sizeof(game_info);
+            msg.type = MSG_JOIN_LOBBY_SUCCESS;
+            game_info.game = *game;
+
+            memcpy(msg.value, &game_info, sizeof(game_info));
+            if (send(player_fd, &msg, sizeof(msg), 0) < 0) {
+                perror("send join lobby success");
+                return -1;
+            }
+            if (lobby->player_count == MAX_PLAYERS_PER_LOBBY) {
+                printf("Lobby %d jest pełne. Wysyłam wiadomość do pierwszego gracza.\n", lobby->lobby_id);
+                TLVMessage other_client_msg;
+                other_client_msg.type = MSG_LOBBY_READY;
+                other_client_msg.length = 0;
+                other_client_msg.value[0] = '\0';
+                if(send(lobby->players[0].player_fd, &other_client_msg, sizeof(other_client_msg), 0) < 0) {
+                    perror("send lobby ready to first player");
+                    return -1;
+                }
+                lobby->status = LOBBY_START;
+                start_game(lobby);
+            }
+            printf("Wysłano wiadomość o dołączeniu do lobby.\n");
+            return i; 
         }
     }
-    return -1;  // brak dostępnych lobby
+    fprintf(stderr, "Wszystkie lobby zostały zapełnione.\n");
+
+    msg.type = MSG_ALL_LOBBIES_FULL;
+    msg.length = 0;
+    // send() is now properly declared via sys/socket.h
+    send(player_fd, &msg, sizeof(msg.type) + sizeof(msg.length), 0);
+    return -1;
+}
+
+void start_game(Lobby *lobby) {
+    if (lobby->status != LOBBY_START) {
+        fprintf(stderr, "Nie można rozpocząć gry, lobby nie jest gotowe.\n");
+        return;
+    }
+
+    Game *game = &lobby->game;
+    
+    printf("Game ID: %d, Lobby ID: %d\n", game->game_id, lobby->lobby_id);
+    game_init(game);
+    game->status = IN_PROGRESS;
+
+    game->current_turn = CELL_X;
+
+    lobby->status = LOBBY_PLAYING;
+    lobby->current_turn = rand() % MAX_PLAYERS_PER_LOBBY;
+    // Informuj graczy o rozpoczęciu gry
+    TLVMessage msg;
+    StartMessage start_msg;
+    start_msg.player_turn = lobby->current_turn; 
+    start_msg.player_id = lobby->players[lobby->current_turn].player_id;
+    msg.type = MSG_GAME_START;
+    msg.length = sizeof(StartMessage);
+    printf("Rozpoczynam grę w lobby %d, tura gracza %d\n", lobby->lobby_id, start_msg.player_turn);
+    memcpy(msg.value, &start_msg, sizeof(start_msg));
+    for (int i = 0; i < lobby->player_count; ++i) {
+        if (send(lobby->players[i].player_fd, &msg, sizeof(msg), 0) < 0) {
+            perror("send game start");
+            return;
+        }
+    }
+    lobby->status = LOBBY_PLAYING;
+
+    printf("Gra rozpoczęta w lobby %d!\n", lobby->lobby_id);
+
 }
 
 void lobby_remove_player(int player_fd) {
     for (int i = 0; i < MAX_LOBBIES; ++i) {
         Lobby *lobby = &lobbies[i];
         for (int j = 0; j < MAX_PLAYERS_PER_LOBBY; ++j) {
-            if (lobby->player_fds[j] == player_fd) {
+            if (lobby->players[j].player_fd == player_fd) {
                 // usuń gracza
-                lobby->player_fds[j] = -1;
+                lobby->players[j].player_fd = -1;
                 // przesuwanie graczy w tablicy
                 for (int k = j; k < MAX_PLAYERS_PER_LOBBY - 1; ++k)
-                    lobby->player_fds[k] = lobby->player_fds[k + 1];
-                lobby->player_fds[MAX_PLAYERS_PER_LOBBY - 1] = -1;
+                    lobby->players[k].player_fd = lobby->players[k+1].player_fd;
+                lobby->players[MAX_PLAYERS_PER_LOBBY - 1].player_fd = -1;
                 lobby->player_count--;
 
                 if (lobby->player_count == 0) {
                     lobby->status = LOBBY_WAITING;
                 } else if (lobby->status == LOBBY_PLAYING) {
-                    lobby->status = LOBBY_WAITING; // lub dodać flagę "przerwana gra"
+                    lobby->status = LOBBY_WAITING; 
                 }
 
                 return;
@@ -60,3 +152,4 @@ Lobby* lobby_get(int index) {
     if (index < 0 || index >= MAX_LOBBIES) return NULL;
     return &lobbies[index];
 }
+

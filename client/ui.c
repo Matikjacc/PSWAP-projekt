@@ -1,5 +1,4 @@
 #include "ui.h"
-#include "network.h"
 #include <stdio.h>
 #include <protocol.h>
 #include <string.h>

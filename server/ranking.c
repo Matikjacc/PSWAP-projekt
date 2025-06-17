@@ -52,12 +52,13 @@ char* get_statistics() {
     memset(ranking_buffer, 0, sizeof(ranking_buffer)); 
 
     int user_count = 0;
-    while (fscanf(file, "%31[^;];%31[^;];%d;%d;%d\n",
+    while (fscanf(file, "%31[^;];%31[^;];%d;%d;%d;%d\n",
                   users[user_count].login,
                   users[user_count].password,
                   &users[user_count].games_played,
                   &users[user_count].games_won,
-                  &users[user_count].games_lost) == 5) {
+                  &users[user_count].games_lost,
+                  &users[user_count].id) == 6) {
         user_count++;
         if (user_count >= MAX_USERS) break;
     }

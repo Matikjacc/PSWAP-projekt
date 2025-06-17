@@ -1,3 +1,6 @@
+#ifndef PROTOCOL_H
+#define PROTOCOL_H
+
 #include <stdint.h>
 #define MAX_PAYLOAD 256
 
@@ -9,6 +12,10 @@ typedef enum {
     MSG_REGISTER_SUCCESS,
     MSG_REGISTER_FAILURE,
     MSG_JOIN_LOBBY,
+    MSG_JOIN_LOBBY_SUCCESS,
+    MSG_LOBBY_READY,
+    MSG_ALL_LOBBIES_FULL,
+    MSG_GAME_START,
     MSG_MOVE,
     MSG_RESULT,
     MSG_RANKING,
@@ -18,7 +25,14 @@ typedef enum {
 } MessageType;
 
 typedef struct {
-    uint8_t type;
+    MessageType type;
     uint16_t length;
     char value[MAX_PAYLOAD];
 } __attribute__((packed)) TLVMessage;
+
+typedef struct {
+    int id;
+    char login[32];
+} UserInfo;
+
+#endif

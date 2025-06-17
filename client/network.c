@@ -1,12 +1,10 @@
 #include <stdio.h>
-#include "protocol.h"
+#include "network.h"
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <stdbool.h>
-
 
 bool login(int sockfd, const char* login, const char* password) {
     TLVMessage msg;
@@ -15,10 +13,10 @@ bool login(int sockfd, const char* login, const char* password) {
     size_t login_len = strlen(login);
     size_t password_len = strlen(password);
     msg.length = login_len + 1 + password_len + 1;
-
+    printf("Długość wiadomości: %d\n", msg.length);
     if (msg.length > MAX_PAYLOAD) {
         fprintf(stderr, "Dane logowania za długie!\n");
-        return;
+        return false;
     }
 
     // Kopiujemy login i hasło do bufora
@@ -56,6 +54,8 @@ bool login(int sockfd, const char* login, const char* password) {
         return false;
     }
     if (response.type == MSG_LOGIN_SUCCESS) {
+        memcpy(&user, response.value, sizeof(UserInfo));
+        user.login[sizeof(user.login) - 1] = '\0';
         printf("Zalogowano pomyślnie!\n");
         return true;
     } else if (response.type == MSG_LOGIN_FAILURE) {
