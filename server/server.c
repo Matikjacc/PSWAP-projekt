@@ -53,7 +53,6 @@ void handle_client_message(int client_fd) {
         close(client_fd);
         return;
     }
-
     ssize_t value_bytes = read(client_fd, msg.value, msg.length);
     if (value_bytes != msg.length) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
@@ -114,8 +113,10 @@ void handle_client_message(int client_fd) {
 
         printf("Wysłano odpowiedź z rankingiem:\n%s\n", ranking);
     }else if(msg.type == MSG_JOIN_LOBBY) {
-        printf("Klient chce dołączyć do lobby.\n");
-        lobby_join(client_fd);
+        int player_id;
+        memcpy(&player_id, msg.value, sizeof(int));
+        printf("Klient %d chce dołączyć do lobby.\n", player_id);
+        lobby_join(client_fd, player_id);
     }else {
         fprintf(stderr, "Nieznany typ wiadomości: %u\n", msg.type);
     }

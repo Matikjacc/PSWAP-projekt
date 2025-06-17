@@ -21,37 +21,57 @@ void lobby_init_all() {
     }
 }
 
-int lobby_join(int player_fd) {
+int lobby_join(int player_fd, int player_id) {
     TLVMessage msg;
     for (int i = 0; i < MAX_LOBBIES; ++i) {
         Lobby *lobby = &lobbies[i];
 
         if (lobby->status == LOBBY_WAITING && lobby->player_count < MAX_PLAYERS_PER_LOBBY) {
             lobby->players[lobby->player_count++].player_fd = player_fd;
+            lobby->players[lobby->player_count - 1].player_id = player_id;
 
-            if (lobby->player_count == MAX_PLAYERS_PER_LOBBY) {
-                GameInfo game_info;
-                Game *game = &lobby->game;
-                lobby->status = LOBBY_FULL;
+            GameInfo game_info;
+            Game *game = &lobby->game;
+            game_info.game = *game;
+            
+            
+            if (lobby->player_count == 1) {
+                lobby->status = LOBBY_WAITING;
                 lobby->lobby_id = rand();
                 lobby->game.game_id = rand();
-                memset(&game->board, CELL_EMPTY, sizeof(game->board));
+                printf("Tworzę nowe lobby o ID: %d\n", lobby->lobby_id);
                 game->current_turn = CELL_X;
-                game->status = IN_PROGRESS;
-                lobby->status = LOBBY_PLAYING;
-                msg.type = MSG_JOIN_LOBBY_SUCCESS;
-                game_info.lobby_id = lobby->lobby_id;
-                game_info.status = lobby->status;
-                game_info.game = *game; 
-                msg.length = sizeof(game_info);
-                memcpy(msg.value, &game_info, sizeof(game_info));
-                if(send(player_fd, &msg, sizeof(msg.type) + sizeof(msg.length), 0) < 0) {
-                    perror("send join lobby success");
-                    return -1;
-                }
+                game->status = -1;
+                game_init(game);
+            }
+            if (lobby->player_count == MAX_PLAYERS_PER_LOBBY) {
+                lobby->status = LOBBY_START;
             }
 
-            return i;  // indeks lobby, do którego dołączono
+            game_info.status = lobby->status;
+            game_info.lobby_id = lobby->lobby_id;
+            msg.length = sizeof(game_info);
+            msg.type = MSG_JOIN_LOBBY_SUCCESS;
+            memcpy(msg.value, &game_info, sizeof(game_info));
+            if (send(player_fd, &msg, sizeof(msg), 0) < 0) {
+                perror("send join lobby success");
+                return -1;
+            }
+            if (lobby->player_count == MAX_PLAYERS_PER_LOBBY) {
+                printf("Lobby %d jest pełne. Wysyłam wiadomość do pierwszego gracza.\n", lobby->lobby_id);
+                TLVMessage other_client_msg;
+                other_client_msg.type = MSG_LOBBY_READY;
+                other_client_msg.length = 0;
+                other_client_msg.value[0] = '\0';
+                if(send(lobby->players[0].player_fd, &other_client_msg, sizeof(other_client_msg), 0) < 0) {
+                    perror("send lobby ready to first player");
+                    return -1;
+                }
+                lobby->status = LOBBY_START;
+                start_game(lobby);
+            }
+            printf("Wysłano wiadomość o dołączeniu do lobby.\n");
+            return i; 
         }
     }
     fprintf(stderr, "Wszystkie lobby zostały zapełnione.\n");
@@ -61,6 +81,40 @@ int lobby_join(int player_fd) {
     // send() is now properly declared via sys/socket.h
     send(player_fd, &msg, sizeof(msg.type) + sizeof(msg.length), 0);
     return -1;
+}
+
+void start_game(Lobby *lobby) {
+    if (lobby->status != LOBBY_START) {
+        fprintf(stderr, "Nie można rozpocząć gry, lobby nie jest gotowe.\n");
+        return;
+    }
+
+    Game *game = &lobby->game;
+    game_init(game);
+    game->status = IN_PROGRESS;
+
+    game->current_turn = CELL_X;
+
+    lobby->status = LOBBY_PLAYING;
+    lobby->current_turn = rand() % MAX_PLAYERS_PER_LOBBY;
+    // Informuj graczy o rozpoczęciu gry
+    TLVMessage msg;
+    StartMessage start_msg;
+    start_msg.player_turn = lobby->current_turn; 
+    start_msg.player_id = lobby->players[lobby->current_turn].player_id;
+    msg.type = MSG_GAME_START;
+    msg.length = sizeof(lobby->lobby_id);
+    memcpy(msg.value, &start_msg, sizeof(start_msg));
+    for (int i = 0; i < lobby->player_count; ++i) {
+        if (send(lobby->players[i].player_fd, &msg, sizeof(msg), 0) < 0) {
+            perror("send game start");
+            return;
+        }
+    }
+    lobby->status = LOBBY_PLAYING;
+
+    printf("Gra rozpoczęta w lobby %d!\n", lobby->lobby_id);
+
 }
 
 void lobby_remove_player(int player_fd) {

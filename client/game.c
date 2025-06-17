@@ -1,46 +1,114 @@
 #include <stdio.h>
 #include <string.h>
 #include "game.h"
-#include "../common/protocol.h"
 #include <netinet/in.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 void game_client_init(int sockfd) {
     
     TLVMessage msg;
     msg.type = MSG_JOIN_LOBBY;
-    msg.length = 0;
+    int user_id = user.id;
+    memcpy(msg.value, &user_id, sizeof(int));
+    msg.length = sizeof(msg.value);
 
     //send the join lobby message
-    ssize_t total_size = sizeof(msg.type) + sizeof(msg.length);
+    ssize_t total_size = sizeof(msg.type) + sizeof(msg.length) + sizeof(msg.value);
+    printf("Wysyłanie wiadomości dołączenia do lobby: user_id=%d\n", user_id);
     if (send(sockfd, &msg, total_size, 0) < 0) {
         perror("send join lobby");
         return;
     }
-
+    printf("Wysłano wiadomość dołączenia do lobby.\n");
     // receive the game message
-    ssize_t bytes_received = recv(sockfd, &msg, sizeof(msg.type) + sizeof(msg.length), 0);
+    ssize_t bytes_received = recv(sockfd, &msg, sizeof(msg), 0);
     if (bytes_received < 0) {
-        if(msg.type == MSG_ALL_LOBBIES_FULL) {
-            fprintf(stderr, "Wszystkie lobby są pełne.\n");
-        } else {
-            perror("recv join lobby");
-        }
+        perror("recv join lobby");
         return;
     }
-    
-    Game *game = malloc(sizeof(Game));
-    memset(game, 0, sizeof(Game));
-    game->game_id = -1; // Initialize game ID to an invalid value
-    game->current_turn = CELL_X; // Start with player X
-    game->status = IN_PROGRESS; // Game starts in progress
+    GameInfo game_info;
+    memcpy(&game_info, msg.value, sizeof(GameInfo));
 
-    for (int i = 0; i < BOARD_SIZE; ++i)
-        for (int j = 0; j < BOARD_SIZE; ++j)
-            game->board[i][j] = CELL_EMPTY;
-    game->current_turn = 'X';
-    game->status = IN_PROGRESS;
+    if(msg.type == MSG_ALL_LOBBIES_FULL) {
+        fprintf(stderr, "Wszystkie lobby są pełne.\n");
+        return;
+    }
+
+    if (msg.type != MSG_JOIN_LOBBY_SUCCESS || msg.length != sizeof(game_info)) {
+        fprintf(stderr, "Nieprawidłowa odpowiedź od serwera. Type: %d, Length: %d\n", 
+                msg.type, msg.length);
+        return;
+    }
+
+    if(game_info.status == LOBBY_WAITING){
+        TLVMessage game_msg;
+        game_msg.type = -1;
+        printf("Lobby jest w trakcie oczekiwania na graczy. ID lobby: %d\n", game_info.lobby_id);
+        while(game_msg.type != MSG_LOBBY_READY) {
+            ssize_t bytes = read(sockfd, &game_msg, sizeof(TLVMessage));
+            if (bytes < 0) {
+                perror("read lobby ready");
+                return;
+            } else if (bytes == 0) {
+                fprintf(stderr, "Serwer zamknął połączenie.\n");
+                return;
+            }
+            printf("Otrzymano wiadomość od serwera: type=%d, length=%d\n", game_msg.type, game_msg.length);
+            if(game_msg.type == MSG_LOBBY_READY) {
+                printf("Lobby jest gotowe do gry. ID lobby: %d\n", game_info.lobby_id);
+                game_info.status = LOBBY_START;
+                break;
+            }else if(game_info.status == LOBBY_START){
+                start_game(&game_info, sockfd);
+            } else {
+                fprintf(stderr, "Nieoczekiwana wiadomość od serwera: %d\n", game_msg.type);
+            }
+        }
+    } else if(game_info.status == LOBBY_PLAYING) {
+        printf("Lobby jest w trakcie gry. ID lobby: %d\n", game_info.lobby_id);
+    } else if(game_info.status == LOBBY_START){
+        printf("Lobby jest gotowe do rozpoczęcia gry. ID lobby: %d\n", game_info.lobby_id);
+        start_game(&game_info, sockfd);
+    } else if(game_info.status == LOBBY_FULL) {
+        fprintf(stderr, "Lobby jest pełne. Nie można dołączyć.\n");
+        return;
+    } else {
+        fprintf(stderr, "Nieznany status lobby: %d\n", game_info.status);
+        return;
+    }
+    printf("Dołączono do lobby %d. Status: %s\n", game_info.lobby_id, status_to_string(game_info.game.status));
 }
+
+void start_game(GameInfo *game_info, int sockfd) {
+    Game *game = &game_info->game;
+    game->current_turn = CELL_X; 
+    game->status = IN_PROGRESS;
+
+    for (int i = 0; i < BOARD_SIZE; ++i) {
+        for (int j = 0; j < BOARD_SIZE; ++j) {
+            game->board[i][j] = CELL_EMPTY;
+        }
+    }
+
+    TLVMessage msg;
+    StartMessage start_msg;
+    if(read(sockfd, &msg, sizeof(msg)) < 0) {
+        perror("read start game");
+        return;
+    }
+
+    if(msg.type != MSG_GAME_START || msg.length != sizeof(start_msg)) {
+        fprintf(stderr, "Nieprawidłowa wiadomość startu gry. Type: %d, Length: %d\n", 
+                msg.type, msg.length);
+        return;
+    }
+
+    memcpy(game_info, msg.value, sizeof(GameInfo));
+
+    printf("Gra rozpoczęta! ID gry: %d\n", game_info->game.game_id);
+}
+
 
 Cell char_to_cell(char c) {
     if (c == 'X') return CELL_X;

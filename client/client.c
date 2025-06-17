@@ -5,10 +5,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <stdbool.h>
 
-#include "protocol.h"
-#include "ui.h"
-#include "game.h"
 #include "client.h"
 
 #define SERVER_IP "127.0.0.1"
@@ -55,7 +53,6 @@ int main() {
         }
         if (option == OPTION_PLAY) {
             game_client_init(sockfd);
-            sleep(2);
             printf("Gra rozpoczęta!\n");
         } else if (option == OPTION_VIEW_STATS) {
             get_statistics(sockfd);

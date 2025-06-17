@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include "protocol.h"
 #include "network.h"
 #include <string.h>
 #include <unistd.h>
@@ -14,10 +13,10 @@ bool login(int sockfd, const char* login, const char* password) {
     size_t login_len = strlen(login);
     size_t password_len = strlen(password);
     msg.length = login_len + 1 + password_len + 1;
-
+    printf("Długość wiadomości: %d\n", msg.length);
     if (msg.length > MAX_PAYLOAD) {
         fprintf(stderr, "Dane logowania za długie!\n");
-        return;
+        return false;
     }
 
     // Kopiujemy login i hasło do bufora

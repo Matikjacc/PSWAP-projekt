@@ -33,13 +33,15 @@ typedef struct {
 
 typedef struct {
     int player_fd;
+    int player_id;
     PlayerChar player_char;
 } Player;
 
 typedef enum {
     LOBBY_WAITING,
     LOBBY_FULL,
-    LOBBY_PLAYING
+    LOBBY_PLAYING,
+    LOBBY_START
 } LobbyStatus;
 
 typedef struct {
@@ -47,3 +49,8 @@ typedef struct {
     LobbyStatus status;
     Game game;
 } GameInfo;
+
+typedef struct {
+    int player_id;
+    int player_turn;
+} StartMessage;
