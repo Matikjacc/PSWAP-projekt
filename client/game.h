@@ -3,6 +3,7 @@
 
 #include "../common/game.h"
 
+
 void game_client_init(int sockfd);
 int game_client_update(Game *game, const char *data);
 void game_client_draw(const Game *game);

@@ -25,7 +25,7 @@ typedef struct {
 } GameInit;
 
 typedef struct {
-    int id;
+    int game_id;
     Cell board[BOARD_SIZE][BOARD_SIZE];
     Cell current_turn;
     GameStatus status;
@@ -35,3 +35,15 @@ typedef struct {
     int player_fd;
     PlayerChar player_char;
 } Player;
+
+typedef enum {
+    LOBBY_WAITING,
+    LOBBY_FULL,
+    LOBBY_PLAYING
+} LobbyStatus;
+
+typedef struct {
+    int lobby_id;
+    LobbyStatus status;
+    Game game;
+} GameInfo;

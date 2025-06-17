@@ -6,16 +6,10 @@
 #define MAX_LOBBIES 10
 #define MAX_PLAYERS_PER_LOBBY 2
 
-typedef enum {
-    LOBBY_WAITING,
-    LOBBY_FULL,
-    LOBBY_PLAYING
-} LobbyStatus;
-
 typedef struct {
     Player players[MAX_PLAYERS_PER_LOBBY];  // sockety graczy
     int player_count;
-    int id;
+    int lobby_id;
     LobbyStatus status;
     Game game;
 } Lobby;
