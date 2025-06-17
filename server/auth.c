@@ -76,6 +76,14 @@ int find_user_by_id(int player_id) {
     return -1;
 }
 
+int get_name_from_user_id(int player_id, char* name, size_t name_len) {
+    int idx = find_user_by_id(player_id);
+    if (idx == -1) return -1;
+    strncpy(name, users_auth[idx].login, name_len - 1);
+    name[name_len - 1] = '\0';
+    return 0;
+}
+
 int authenticate_user(const char* login, const char* password, int sockfd) {
     int idx = find_user_by_login(login);
     if (idx == -1) return -1;

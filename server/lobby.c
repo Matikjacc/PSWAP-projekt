@@ -5,7 +5,7 @@
 #include "../common/protocol.h"
 #include <stdio.h>
 
-static Lobby lobbies[MAX_LOBBIES];
+Lobby lobbies[MAX_LOBBIES];
 
 void lobby_init_all() {
     for (int i = 0; i < MAX_LOBBIES; i++) {
@@ -32,16 +32,17 @@ int lobby_join(int player_fd, int player_id) {
 
             GameInfo game_info;
             Game *game = &lobby->game;
-            game_info.game = *game;
             
             
             if (lobby->player_count == 1) {
                 lobby->status = LOBBY_WAITING;
                 lobby->lobby_id = rand();
                 lobby->game.game_id = rand();
+                game_info.game.game_id = lobby->game.game_id;
                 printf("Tworzę nowe lobby o ID: %d\n", lobby->lobby_id);
                 game->current_turn = CELL_X;
-                game->status = -1;
+                game->status = IN_PROGRESS;
+                lobby->game.status = IN_PROGRESS;
                 game_init(game);
             }
             if (lobby->player_count == MAX_PLAYERS_PER_LOBBY) {
@@ -52,6 +53,8 @@ int lobby_join(int player_fd, int player_id) {
             game_info.lobby_id = lobby->lobby_id;
             msg.length = sizeof(game_info);
             msg.type = MSG_JOIN_LOBBY_SUCCESS;
+            game_info.game = *game;
+
             memcpy(msg.value, &game_info, sizeof(game_info));
             if (send(player_fd, &msg, sizeof(msg), 0) < 0) {
                 perror("send join lobby success");
@@ -90,6 +93,8 @@ void start_game(Lobby *lobby) {
     }
 
     Game *game = &lobby->game;
+    
+    printf("Game ID: %d, Lobby ID: %d\n", game->game_id, lobby->lobby_id);
     game_init(game);
     game->status = IN_PROGRESS;
 
@@ -103,7 +108,8 @@ void start_game(Lobby *lobby) {
     start_msg.player_turn = lobby->current_turn; 
     start_msg.player_id = lobby->players[lobby->current_turn].player_id;
     msg.type = MSG_GAME_START;
-    msg.length = sizeof(lobby->lobby_id);
+    msg.length = sizeof(StartMessage);
+    printf("Rozpoczynam grę w lobby %d, tura gracza %d\n", lobby->lobby_id, start_msg.player_turn);
     memcpy(msg.value, &start_msg, sizeof(start_msg));
     for (int i = 0; i < lobby->player_count; ++i) {
         if (send(lobby->players[i].player_fd, &msg, sizeof(msg), 0) < 0) {

@@ -2,7 +2,11 @@
 #define GAME_H
 
 #define BOARD_SIZE 3
+#define MAX_LOBBIES 10
 #include "../common/game.h"
+#include "lobby.h"
+
+Lobby lobbies[MAX_LOBBIES];
 
 void game_init(Game *game);
 

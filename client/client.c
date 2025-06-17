@@ -53,7 +53,6 @@ int main() {
         }
         if (option == OPTION_PLAY) {
             game_client_init(sockfd);
-            printf("Gra rozpoczęta!\n");
         } else if (option == OPTION_VIEW_STATS) {
             get_statistics(sockfd);
         }

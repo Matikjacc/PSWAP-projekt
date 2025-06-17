@@ -1,3 +1,6 @@
+#ifndef PROTOCOL_H
+#define PROTOCOL_H
+
 #include <stdint.h>
 #define MAX_PAYLOAD 256
 
@@ -31,3 +34,5 @@ typedef struct {
     int id;
     char login[32];
 } UserInfo;
+
+#endif

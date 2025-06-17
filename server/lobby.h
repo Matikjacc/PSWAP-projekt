@@ -4,16 +4,9 @@
 #include "game.h"
 
 #define MAX_LOBBIES 10
-#define MAX_PLAYERS_PER_LOBBY 2
 
-typedef struct {
-    Player players[MAX_PLAYERS_PER_LOBBY];  // sockety graczy
-    int player_count;
-    int lobby_id;
-    int current_turn;
-    LobbyStatus status;
-    Game game;
-} Lobby;
+
+extern Lobby lobbies[MAX_LOBBIES];
 
 void start_game(Lobby *lobby);
 void lobby_init_all();

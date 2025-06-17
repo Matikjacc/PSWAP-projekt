@@ -58,9 +58,8 @@ void game_client_init(int sockfd) {
             if(game_msg.type == MSG_LOBBY_READY) {
                 printf("Lobby jest gotowe do gry. ID lobby: %d\n", game_info.lobby_id);
                 game_info.status = LOBBY_START;
-                break;
-            }else if(game_info.status == LOBBY_START){
                 start_game(&game_info, sockfd);
+                return;
             } else {
                 fprintf(stderr, "Nieoczekiwana wiadomość od serwera: %d\n", game_msg.type);
             }
@@ -70,6 +69,7 @@ void game_client_init(int sockfd) {
     } else if(game_info.status == LOBBY_START){
         printf("Lobby jest gotowe do rozpoczęcia gry. ID lobby: %d\n", game_info.lobby_id);
         start_game(&game_info, sockfd);
+        return;
     } else if(game_info.status == LOBBY_FULL) {
         fprintf(stderr, "Lobby jest pełne. Nie można dołączyć.\n");
         return;
@@ -82,6 +82,7 @@ void game_client_init(int sockfd) {
 
 void start_game(GameInfo *game_info, int sockfd) {
     Game *game = &game_info->game;
+    printf("Game ID: %d, Lobby ID: %d\n", game->game_id, game_info->lobby_id);
     game->current_turn = CELL_X; 
     game->status = IN_PROGRESS;
 
@@ -104,9 +105,68 @@ void start_game(GameInfo *game_info, int sockfd) {
         return;
     }
 
-    memcpy(game_info, msg.value, sizeof(GameInfo));
+    memcpy(&start_msg, msg.value, sizeof(start_msg));
 
-    printf("Gra rozpoczęta! ID gry: %d\n", game_info->game.game_id);
+    printf("Gra rozpoczęta! ID gry: %d\n", game->game_id);
+
+    game_client_draw(game);
+
+    while (game->status == IN_PROGRESS) {
+        if(start_msg.player_id == user.id){
+            printf("Twoja tura!\n");
+        }else{
+            printf("Oczekiwanie na ruch gracza %d...\n", start_msg.player_turn);
+        }
+        char input[10];
+        printf("Tura gracza %c. Wprowadź ruch (np. 1 2): ", game->current_turn == CELL_X ? 'X' : 'O');
+        fgets(input, sizeof(input), stdin);
+
+        int row, col;
+        if (sscanf(input, "%d %d", &row, &col) != 2 || row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {
+            printf("Nieprawidłowy ruch. Spróbuj ponownie.\n");
+            continue;
+        }
+
+        if (game->board[row][col] != CELL_EMPTY) {
+            printf("To pole jest już zajęte. Spróbuj ponownie.\n");
+            continue;
+        }
+
+        game->board[row][col] = game->current_turn;
+
+        // Send move to server
+        msg.type = MSG_MOVE;
+        msg.length = sizeof(Game);
+        memcpy(msg.value, game, sizeof(Game));
+        if (send(sockfd, &msg, sizeof(msg), 0) < 0) {
+            perror("send move");
+            return;
+        }
+
+        // Receive updated game state
+        if (recv(sockfd, &msg, sizeof(msg), 0) < 0) {
+            perror("recv updated game state");
+            return;
+        }
+
+        if (msg.type != MSG_RESULT || msg.length != sizeof(Game)) {
+            fprintf(stderr, "Nieprawidłowa odpowiedź od serwera. Type: %d, Length: %d\n", 
+                    msg.type, msg.length);
+            return;
+        }
+
+        memcpy(game, msg.value, sizeof(Game));
+        game_client_draw(game);
+    }
+    if (game->status == WIN_X) {
+        printf("Gratulacje! Gracz X wygrał!\n");
+    } else if (game->status == WIN_O) {
+        printf("Gratulacje! Gracz O wygrał!\n");
+    } else if (game->status == DRAW) {
+        printf("Mamy remis!\n");
+    } else {
+        printf("Gra zakończona w nieznanym stanie.\n");
+    }
 }
 
 
@@ -128,7 +188,6 @@ void game_client_draw(const Game *game) {
         }
         printf("\n");
     }
-    printf("Status: %s | Tura: %c\n\n", status_to_string(game->status), game->current_turn);
 }
 
 int game_client_update(Game *game, const char *data) {
