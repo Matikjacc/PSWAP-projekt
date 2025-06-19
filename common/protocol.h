@@ -18,6 +18,7 @@ typedef enum {
     MSG_GAME_START,
     MSG_MOVE,
     MSG_RESULT,
+    MSG_WRONG_MOVE,
     MSG_RANKING,
     MSG_RANKING_RESPONSE,
     MSG_HISTORY,

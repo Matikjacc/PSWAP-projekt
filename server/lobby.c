@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include "lobby.h"
+#include "storage.h"
 #include "../common/protocol.h"
 #include <stdio.h>
 
@@ -101,17 +102,24 @@ void start_game(Lobby *lobby) {
     game->current_turn = CELL_X;
 
     lobby->status = LOBBY_PLAYING;
-    lobby->current_turn = rand() % MAX_PLAYERS_PER_LOBBY;
-    // Informuj graczy o rozpoczęciu gry
+
     TLVMessage msg;
     StartMessage start_msg;
-    start_msg.player_turn = lobby->current_turn; 
-    start_msg.player_id = lobby->players[lobby->current_turn].player_id;
+    start_msg.player_id = lobby->players[lobby->game.current_turn].player_id;
     msg.type = MSG_GAME_START;
     msg.length = sizeof(StartMessage);
-    printf("Rozpoczynam grę w lobby %d, tura gracza %d\n", lobby->lobby_id, start_msg.player_turn);
-    memcpy(msg.value, &start_msg, sizeof(start_msg));
+    printf("Rozpoczynam grę w lobby %d\n", lobby->lobby_id);
     for (int i = 0; i < lobby->player_count; ++i) {
+        char opponent_name[32];
+        if (get_name_from_user_id(lobby->players[i].player_id, opponent_name, sizeof(opponent_name)) < 0) {
+            fprintf(stderr, "Nie można pobrać nazwy gracza o ID %d\n", lobby->players[i].player_id);
+            return;
+        }
+        printf("Gracz %d: %s\n", i, opponent_name);
+        memset(start_msg.opponent_name, 0, sizeof(start_msg.opponent_name));
+        strncpy(start_msg.opponent_name, opponent_name, sizeof(start_msg.opponent_name) - 1);
+        start_msg.opponent_name[sizeof(start_msg.opponent_name) - 1] = '\0';
+        memcpy(msg.value, &start_msg, sizeof(start_msg));
         if (send(lobby->players[i].player_fd, &msg, sizeof(msg), 0) < 0) {
             perror("send game start");
             return;

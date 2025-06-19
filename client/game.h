@@ -2,7 +2,7 @@
 #define CLIENT_GAME_H
 
 #include "../common/game.h"
-#include "client.h"
+
 
 
 void game_client_init(int sockfd);

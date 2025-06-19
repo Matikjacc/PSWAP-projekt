@@ -3,7 +3,7 @@
 #include <protocol.h>
 #include <string.h>
 #include <unistd.h>
-
+#include <sys/socket.h>
 
 bool authenticate(int sockfd){
     char username[50];

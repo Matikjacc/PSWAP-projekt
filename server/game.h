@@ -4,13 +4,10 @@
 #define BOARD_SIZE 3
 #define MAX_LOBBIES 10
 #include "../common/game.h"
-#include "lobby.h"
-
-Lobby lobbies[MAX_LOBBIES];
 
 void game_init(Game *game);
 
-int game_make_move(Game *game, int row, int col);
+int game_make_move(Game *game);
 
 GameStatus game_check_status(Game *game);
 

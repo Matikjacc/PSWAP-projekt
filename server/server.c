@@ -13,6 +13,8 @@
 #include "protocol.h"
 #include "ranking.h"
 #include "lobby.h"
+#include "game.h"
+#include "storage.h"
 
 #define PORT 1234
 #define BACKLOG 10
@@ -117,6 +119,11 @@ void handle_client_message(int client_fd) {
         memcpy(&player_id, msg.value, sizeof(int));
         printf("Klient %d chce dołączyć do lobby.\n", player_id);
         lobby_join(client_fd, player_id);
+    }else if(msg.type == MSG_MOVE){
+        Game game;
+        memcpy(&game, msg.value, sizeof(Game));
+        printf("Otrzymano ruch od gracza. ID gry: %d\n", game.game_id);
+        game_make_move(&game);
     }else {
         fprintf(stderr, "Nieznany typ wiadomości: %u\n", msg.type);
     }
