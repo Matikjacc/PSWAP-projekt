@@ -102,15 +102,13 @@ void start_game(Lobby *lobby) {
     game->current_turn = CELL_X;
 
     lobby->status = LOBBY_PLAYING;
-    lobby->current_turn = rand() % MAX_PLAYERS_PER_LOBBY;
 
     TLVMessage msg;
     StartMessage start_msg;
-    start_msg.player_turn = lobby->current_turn; 
-    start_msg.player_id = lobby->players[lobby->current_turn].player_id;
+    start_msg.player_id = lobby->players[lobby->game.current_turn].player_id;
     msg.type = MSG_GAME_START;
     msg.length = sizeof(StartMessage);
-    printf("Rozpoczynam grę w lobby %d, tura gracza %d\n", lobby->lobby_id, start_msg.player_turn);
+    printf("Rozpoczynam grę w lobby %d\n", lobby->lobby_id);
     for (int i = 0; i < lobby->player_count; ++i) {
         char opponent_name[32];
         if (get_name_from_user_id(lobby->players[i].player_id, opponent_name, sizeof(opponent_name)) < 0) {

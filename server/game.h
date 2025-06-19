@@ -7,7 +7,7 @@
 
 void game_init(Game *game);
 
-int game_make_move(Game *game, int row, int col);
+int game_make_move(Game *game);
 
 GameStatus game_check_status(Game *game);
 

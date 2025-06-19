@@ -29,9 +29,9 @@ typedef enum {
 } GameStatus;
 
 typedef enum {
-    CELL_EMPTY = 0,
-    CELL_X,
-    CELL_O
+    CELL_X = 0,
+    CELL_O,
+    CELL_EMPTY
 } Cell;
 
 typedef struct {
@@ -47,7 +47,6 @@ typedef struct {
     Player players[MAX_PLAYERS_PER_LOBBY];  // sockety graczy
     int player_count;
     int lobby_id;
-    int current_turn;
     LobbyStatus status;
     Game game;
 } Lobby;
@@ -60,7 +59,6 @@ typedef struct {
 
 typedef struct {
     int player_id;
-    int player_turn;
     char opponent_name[32];
 } StartMessage;
 
