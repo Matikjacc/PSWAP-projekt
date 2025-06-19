@@ -52,9 +52,6 @@ typedef struct {
     Game game;
 } Lobby;
 
-
-
-
 typedef struct {
     int lobby_id;
     LobbyStatus status;
@@ -64,6 +61,7 @@ typedef struct {
 typedef struct {
     int player_id;
     int player_turn;
+    char opponent_name[32];
 } StartMessage;
 
 #endif

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "game.h"
+#include "client.h"
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -115,7 +116,7 @@ void start_game(GameInfo *game_info, int sockfd) {
         if(start_msg.player_id == user.id){
             printf("Twoja tura!\n");
         }else{
-            printf("Oczekiwanie na ruch gracza %d...\n", start_msg.player_turn);
+            printf("Oczekiwanie na ruch gracza %s...\n", start_msg.opponent_name);
         }
         char input[10];
         printf("Tura gracza %c. Wprowadź ruch (np. 1 2): ", game->current_turn == CELL_X ? 'X' : 'O');

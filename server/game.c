@@ -1,4 +1,5 @@
 #include "game.h"
+#include "lobby.h"
 
 void game_init(Game *game) {
     for (int i = 0; i < BOARD_SIZE; i++) {
@@ -6,7 +7,7 @@ void game_init(Game *game) {
             game->board[i][j] = CELL_EMPTY;
         }
     }
-    game->current_turn = PLAYER_X;
+    game->current_turn = CELL_X;
     game->status = IN_PROGRESS;
 }
 
@@ -22,7 +23,7 @@ int game_make_move(Game *game, int row, int col) {
     game->status = game_check_status(game);
 
     if (game->status == IN_PROGRESS) {
-        game->current_turn = (game->current_turn == PLAYER_X) ? PLAYER_O : PLAYER_X;
+        game->current_turn = (game->current_turn == CELL_X) ? CELL_O : CELL_X;
     }
 
     return 1;
@@ -34,13 +35,13 @@ GameStatus game_check_status(Game *game) {
         if (game->board[i][0] != CELL_EMPTY &&
             game->board[i][0] == game->board[i][1] &&
             game->board[i][1] == game->board[i][2]) {
-            return (game->board[i][0] == PLAYER_X) ? WIN_X : WIN_O;
+            return (game->board[i][0] == CELL_X) ? WIN_X : WIN_O;
         }
         // Columns
         if (game->board[0][i] != CELL_EMPTY &&
             game->board[0][i] == game->board[1][i] &&
             game->board[1][i] == game->board[2][i]) {
-            return (game->board[0][i] == PLAYER_X) ? WIN_X : WIN_O;
+            return (game->board[0][i] == CELL_X) ? WIN_X : WIN_O;
         }
     }
 
@@ -54,7 +55,7 @@ GameStatus game_check_status(Game *game) {
         }
     }
     if (main_diag_win) {
-        return (game->board[0][0] == PLAYER_X) ? WIN_X : WIN_O;
+        return (game->board[0][0] == CELL_X) ? WIN_X : WIN_O;
     }
 
     // Anti-diagonal
@@ -66,7 +67,7 @@ GameStatus game_check_status(Game *game) {
         }
     }
     if (anti_diag_win) {
-        return (game->board[0][BOARD_SIZE - 1] == PLAYER_X) ? WIN_X : WIN_O;
+        return (game->board[0][BOARD_SIZE - 1] == CELL_X) ? WIN_X : WIN_O;
     }
 
     // Check for draw

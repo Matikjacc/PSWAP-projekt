@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include "network.h"
+#include "client.h"
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+
+UserInfo user;
 
 bool login(int sockfd, const char* login, const char* password) {
     TLVMessage msg;
