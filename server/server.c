@@ -14,6 +14,7 @@
 #include "ranking.h"
 #include "lobby.h"
 #include "game.h"
+#include "storage.h"
 
 #define PORT 1234
 #define BACKLOG 10

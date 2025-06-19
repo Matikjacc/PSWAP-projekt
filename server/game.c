@@ -1,5 +1,7 @@
 #include "game.h"
 #include "lobby.h"
+#include "auth.h"
+#include "storage.h"
 #include "../common/protocol.h"
 #include <stdio.h>
 #include <unistd.h>
@@ -28,6 +30,7 @@ int game_make_move(Game *game) {
     // Find lobby of the game
     printf("Game is still in progress, current turn: %c\n", game->current_turn);
     int i;
+    int id_player1, id_player2;
     short move_made = 0;
     for(i = 0; i < MAX_LOBBIES; i++) {
         if (lobbies[i].game.game_id == game->game_id) {
@@ -37,6 +40,31 @@ int game_make_move(Game *game) {
                         game->board[row][col] = game->current_turn;
                         game->current_turn = (game->current_turn == CELL_X) ? CELL_O : CELL_X;
                         game->status = game_check_status(game);
+
+                        
+                        if(game->status != IN_PROGRESS);
+
+                        if(game->status == WIN_X) {
+                            id_player1 = find_user_by_id(lobbies[i].players[0].player_id);
+                            id_player2 = find_user_by_id(lobbies[i].players[1].player_id);
+                            users_auth[id_player1].games_played++;
+                            users_auth[id_player2].games_played++;
+                            users_auth[id_player1].games_won++;
+                            users_auth[id_player2].games_lost++;
+                            save_users(USER_DB_FILE);
+                        } else if(game->status == WIN_O) {
+                            users_auth[id_player1].games_played++;
+                            users_auth[id_player2].games_played++;
+                            users_auth[id_player2].games_won++;
+                            users_auth[id_player1].games_lost++;
+                            save_users(USER_DB_FILE);
+                            printf("Player O wins!\n");
+                        } else if(game->status == DRAW) {
+                            users_auth[id_player1].games_played++;
+                            users_auth[id_player2].games_played++;
+                            save_users(USER_DB_FILE);
+                            printf("Game is a draw!\n");
+                        }
                         printf("Move made at (%d, %d) by player %c\n", row, col, game->current_turn == CELL_X ? 'X' : 'O');
                         move_made = 1;
                         break;
