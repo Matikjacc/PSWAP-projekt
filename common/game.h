@@ -3,15 +3,10 @@
 #define BOARD_SIZE 3
 #define MAX_PLAYERS_PER_LOBBY 2
 
-typedef enum {
-    PLAYER_O = 0,
-    PLAYER_X
-} PlayerChar;
 
 typedef struct {
     int player_fd;
     int player_id;
-    PlayerChar player_char;
 } Player;
 
 typedef enum {

@@ -99,7 +99,7 @@ void game_client_init(int sockfd)
         fprintf(stderr, "Nieznany status lobby: %d\n", game_info.status);
         return;
     }
-    printf("Dołączono do lobby %d. Status: %s\n", game_info.lobby_id, status_to_string(game_info.game.status));
+    printf("Dołączono do lobby %d.", game_info.lobby_id);
 }
 
 void start_game(GameInfo *game_info, int sockfd)
@@ -157,8 +157,6 @@ void start_game(GameInfo *game_info, int sockfd)
             printf("Twoja tura!\n");
             char input[10];
             printf("Ruchy są w formacie: <wiersz> <kolumna>\n");
-            printf("Tura gracza %s.", user.login);
-
         get_player_move:
             int row, col;
             short move_correct = 0;
@@ -241,15 +239,6 @@ void start_game(GameInfo *game_info, int sockfd)
     }
 }
 
-Cell char_to_cell(char c)
-{
-    if (c == 'X')
-        return CELL_X;
-    if (c == 'O')
-        return CELL_O;
-    return CELL_EMPTY;
-}
-
 void game_client_draw(const Game *game)
 {
     printf("\n  0 1 2\n");
@@ -267,58 +256,4 @@ void game_client_draw(const Game *game)
         }
         printf("\n");
     }
-}
-
-int game_client_update(Game *game, const char *data)
-{
-    if (!data)
-        return 0;
-
-    char board_str[10];
-    char turn_char;
-    char status_str[32];
-
-    // read from data // CHANGE FORMAT TO TLV
-    if (sscanf(data, "%9[^;];%c;%31s", board_str, &turn_char, status_str) != 3)
-        return 0;
-
-    for (int i = 0; i < 9; ++i)
-    {
-        game->board[i / 3][i % 3] = char_to_cell(board_str[i]);
-    }
-
-    game->current_turn = turn_char;
-    game->status = string_to_status(status_str);
-
-    return 1;
-}
-
-const char *status_to_string(GameStatus status)
-{
-    switch (status)
-    {
-    case IN_PROGRESS:
-        return "IN_PROGRESS";
-    case DRAW:
-        return "DRAW";
-    case WIN_X:
-        return "WIN_X";
-    case WIN_O:
-        return "WIN_O";
-    default:
-        return "UNKNOWN";
-    }
-}
-
-GameStatus string_to_status(const char *str)
-{
-    if (strcmp(str, "IN_PROGRESS") == 0)
-        return IN_PROGRESS;
-    if (strcmp(str, "DRAW") == 0)
-        return DRAW;
-    if (strcmp(str, "WIN_X") == 0)
-        return WIN_X;
-    if (strcmp(str, "WIN_O") == 0)
-        return WIN_O;
-    return IN_PROGRESS; // fallback
 }

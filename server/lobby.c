@@ -111,8 +111,8 @@ void start_game(Lobby *lobby) {
     printf("Rozpoczynam grę w lobby %d\n", lobby->lobby_id);
     for (int i = 0; i < lobby->player_count; ++i) {
         char opponent_name[32];
-        if (get_name_from_user_id(lobby->players[i].player_id, opponent_name, sizeof(opponent_name)) < 0) {
-            fprintf(stderr, "Nie można pobrać nazwy gracza o ID %d\n", lobby->players[i].player_id);
+        if (get_name_from_user_id(lobby->players[(i + 1)%2].player_id, opponent_name, sizeof(opponent_name)) < 0) {
+            fprintf(stderr, "Nie można pobrać nazwy gracza o ID %d\n", lobby->players[(i + 1)%2].player_id);
             return;
         }
         printf("Gracz %d: %s\n", i, opponent_name);
