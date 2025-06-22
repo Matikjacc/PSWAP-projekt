@@ -124,6 +124,7 @@ void register_account(int sockfd, const char* login, const char* password){
     if (response.type == MSG_REGISTER_SUCCESS) {
         printf("Rejestracja zakończona sukcesem!\n");
         sleep(3);
+    }
     else if (response.type == MSG_REGISTER_LOGIN_TAKEN) {
         printf("Login jest już zajęty. Wybierz inny.\n");
         sleep(3);
