@@ -7,4 +7,6 @@
 
 extern UserInfo user;
 
+void get_active_players(int sockfd);
+
 #endif
