@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,46 +11,61 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
+#include <netdb.h>
 
 #include "client.h"
 #include "server_discovery.h"
 
-#define SERVER_IP "127.0.0.1"
-#define SERVER_PORT 1234
-
 int get_server_address_from_user(struct sockaddr_in *server_addr) {
-    char input_ip[INET_ADDRSTRLEN];
+    char input_host[256];
     int input_port;
 
     while (1) {
-        printf("Proszę podać adres IP serwera: ");
-        if (fgets(input_ip, sizeof(input_ip), stdin) == NULL) {
+        printf("Proszę podać adres IP lub nazwę domenową serwera: ");
+        if (fgets(input_host, sizeof(input_host), stdin) == NULL) {
             return 0;
         }
-        input_ip[strcspn(input_ip, "\n")] = '\0';
+        input_host[strcspn(input_host, "\n")] = '\0';  // remove \n
 
         printf("Proszę podać port serwera: ");
         if (scanf("%d", &input_port) != 1) {
             fprintf(stderr, "Niepoprawny port.\n");
-            while(getchar() != '\n');
+            while(getchar() != '\n'); // clear stdin
             continue;
         }
-        while(getchar() != '\n');
+        while(getchar() != '\n'); // clear stdin
 
-        memset(server_addr, 0, sizeof(*server_addr));
-        server_addr->sin_family = AF_INET;
-        server_addr->sin_port = htons(input_port);
-
-        if (inet_pton(AF_INET, input_ip, &server_addr->sin_addr) != 1) {
-            fprintf(stderr, "Niepoprawny adres IP. Spróbuj ponownie.\n");
-            continue;
-        }
         if (input_port <= 0 || input_port > 65535) {
             fprintf(stderr, "Niepoprawny port. Spróbuj ponownie.\n");
             continue;
         }
 
-        return 1; // powodzenie
+        memset(server_addr, 0, sizeof(*server_addr));
+        server_addr->sin_family = AF_INET;
+        server_addr->sin_port = htons(input_port);
+
+        // First try to parse as IPv4 address
+        if (inet_pton(AF_INET, input_host, &server_addr->sin_addr) == 1) {
+            // Poprawny adres IPv4
+            return 1;
+        } 
+
+        // Else try to resolve hostname
+        struct addrinfo hints = {0}, *res = NULL;
+        hints.ai_family = AF_INET; // IPv4
+        hints.ai_socktype = SOCK_STREAM;
+        
+        int err = getaddrinfo(input_host, NULL, &hints, &res);
+        if (err != 0) {
+            fprintf(stderr, "Nie można rozwiązać nazwy '%s': %s\n", input_host, gai_strerror(err));
+            continue;
+        }
+
+        // Copy resolved address to server_addr
+        struct sockaddr_in *addr_in = (struct sockaddr_in *) res->ai_addr;
+        server_addr->sin_addr = addr_in->sin_addr;
+        freeaddrinfo(res);
+        return 1;
     }
 }
 
@@ -148,7 +164,8 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    printf("Połączono z serwerem %s:%d\n", SERVER_IP, SERVER_PORT);
+    printf("Połączono z serwerem %s:%d\n",
+       inet_ntoa(server_addr.sin_addr), ntohs(server_addr.sin_port));
 
     sleep(1); // Better UX
     printf("\033[2J\033[H");
@@ -169,6 +186,8 @@ int main() {
             game_client_init(sockfd);
         } else if (option == OPTION_VIEW_STATS) {
             get_statistics(sockfd);
+        } else if (option == OPTION_ACTIVE_PLAYERS) {
+            get_active_players(sockfd);
         }
     }
 

@@ -16,7 +16,7 @@ bool login(int sockfd, const char* login, const char* password) {
     size_t login_len = strlen(login);
     size_t password_len = strlen(password);
     msg.length = login_len + 1 + password_len + 1;
-    printf("Długość wiadomości: %d\n", msg.length);
+    //printf("Długość wiadomości: %d\n", msg.length);
     if (msg.length > MAX_PAYLOAD) {
         fprintf(stderr, "Dane logowania za długie!\n");
         return false;
@@ -33,9 +33,9 @@ bool login(int sockfd, const char* login, const char* password) {
     
     if (sent != total_size) {
         perror("send");
-    } else {
+    } /*else {
         printf("Wysłano dane logowania: login=\"%s\", hasło=\"%s\"\n", login, password);
-    }
+    }*/
 
     // Odbieramy odpowiedź od serwera
     TLVMessage response;
@@ -63,6 +63,8 @@ bool login(int sockfd, const char* login, const char* password) {
         return true;
     } else if (response.type == MSG_LOGIN_FAILURE) {
         printf("Błąd logowania. Sprawdź login i hasło.\n");
+    } else if (response.type == MSG_LOGIN_ALREADY_LOGGED_IN) {
+        printf("Błąd logowania. Jesteś już zalogowany na innym terminalu.\n");
     } else {
         printf("Otrzymano nieznany typ wiadomości: %u\n", response.type);
     }
@@ -93,9 +95,9 @@ void register_account(int sockfd, const char* login, const char* password){
     
     if (sent != total_size) {
         perror("send");
-    } else {
+    } /*else {
         printf("Wysłano dane rejestracji: login=\"%s\", hasło=\"%s\"\n", login, password);
-    }
+    }*/
 
     // Odbieramy odpowiedź od serwera
     TLVMessage response;

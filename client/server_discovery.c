@@ -66,7 +66,7 @@ int discover_server(struct sockaddr_in *server_addr, int timeout_sec) {
         return 0;
     }
 
-    // Odbierz odpowiedź jako TLV
+    // Odbierz odpowiedź
     ret = recvfrom(sockfd, &response, sizeof(response), 0,
                    (struct sockaddr *)&from_addr, &from_len);
     if (ret < 0) {
@@ -86,7 +86,7 @@ int discover_server(struct sockaddr_in *server_addr, int timeout_sec) {
         return 0;
     }
 
-    // Parsuj port
+    // Parse port
     uint16_t port;
     memcpy(&port, response.value, sizeof(port));
     port = ntohs(port);
@@ -94,7 +94,7 @@ int discover_server(struct sockaddr_in *server_addr, int timeout_sec) {
     printf("[Wyszukiwanie serwera] Otrzymano odpowiedź od %s: port %d\n",
            inet_ntoa(from_addr.sin_addr), port);
 
-    // Wypełnij adres serwera
+    // Fill server_addr
     memset(server_addr, 0, sizeof(*server_addr));
     server_addr->sin_family = AF_INET;
     server_addr->sin_addr = from_addr.sin_addr;
