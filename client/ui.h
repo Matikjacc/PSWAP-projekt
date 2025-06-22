@@ -14,6 +14,7 @@ typedef enum{
 typedef enum {
     OPTION_PLAY = 1,
     OPTION_VIEW_STATS,
+    OPTION_ACTIVE_PLAYERS,
     OPTION_EXIT_GAME
 } MainMenuOption;
 

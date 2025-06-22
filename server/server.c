@@ -15,10 +15,9 @@
 #include "lobby.h"
 #include "game.h"
 #include "storage.h"
+#include "server_discovery.h"
+#include "config.h"
 
-#define PORT 1234
-#define BACKLOG 10
-#define MAX_EVENTS 10
 
 // Make socket non-blocking
 static int make_socket_non_blocking(int sfd) {
@@ -40,6 +39,7 @@ void handle_client_message(int client_fd) {
     ssize_t header_bytes = read(client_fd, &msg, sizeof(msg.type) + sizeof(msg.length));
     if (header_bytes == 0) {
         printf("Klient się rozłączył.\n");
+        remove_logged_user_by_fd(client_fd);
         close(client_fd);
         return;
     } else if (header_bytes < 0) {
@@ -114,7 +114,32 @@ void handle_client_message(int client_fd) {
         }
 
         printf("Wysłano odpowiedź z rankingiem:\n%s\n", ranking);
-    }else if(msg.type == MSG_JOIN_LOBBY) {
+    } else if(msg.type == MSG_ACTIVE_USERS) {
+        printf("Otrzymano żądanie aktywnych graczy.\n");
+        char* active_users = get_active_users_list();
+        if (active_users == NULL) {
+            fprintf(stderr, "Błąd podczas pobierania listy aktywnych graczy.\n");
+            msg.type = MSG_ERROR;
+            msg.length = 0;
+            send(client_fd, &msg, sizeof(msg.type) + sizeof(msg.length), 0);
+            return;
+        }
+
+        size_t active_users_len = strlen(active_users) + 1; 
+        strncpy(msg.value, active_users, MAX_PAYLOAD - 1);
+        msg.value[MAX_PAYLOAD - 1] = '\0'; 
+        
+        msg.type = MSG_ACTIVE_USERS_RESPONSE;
+        msg.length = active_users_len;
+
+        ssize_t total_size = sizeof(msg.type) + sizeof(msg.length) + msg.length;
+        if (send(client_fd, &msg, total_size, 0) < 0) {
+            perror("send active users");
+            return;
+        }
+
+        printf("Wysłano odpowiedź z aktywnymi graczami:\n%s\n", active_users);
+    } else if(msg.type == MSG_JOIN_LOBBY) {
         int player_id;
         memcpy(&player_id, msg.value, sizeof(int));
         printf("Klient %d chce dołączyć do lobby.\n", player_id);
@@ -174,6 +199,18 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+    int discovery_fd = init_discovery_socket();
+    if (discovery_fd >= 0) {
+        ev.events = EPOLLIN;
+        ev.data.fd = discovery_fd;
+        if (epoll_ctl(epollfd, EPOLL_CTL_ADD, discovery_fd, &ev) == -1) {
+            perror("epoll_ctl discovery");
+            close(discovery_fd);
+        } else {
+            printf("[Discovery] Nasłuchuję multicast na %s:%d\n", MULTICAST_GROUP, MULTICAST_PORT);
+        }
+    }
+
     ev.events = EPOLLIN;
     ev.data.fd = server_fd;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, server_fd, &ev) == -1) {
@@ -214,7 +251,11 @@ int main() {
                     close(client_fd);
                     continue;
                 }
-            } else {
+            } else if (events[n].data.fd == discovery_fd) {
+                // Obsługa multicast server discovery
+                handle_discovery_message(discovery_fd);
+            }
+            else {
                 // Obsługa danych od klienta
                 handle_client_message(events[n].data.fd);
             }

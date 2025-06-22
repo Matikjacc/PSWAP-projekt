@@ -17,7 +17,20 @@ typedef struct {
 extern User users_auth[MAX_USERS];
 extern int user_count;
 
+typedef struct {
+    int player_id;
+    int socket_fd;
+    char login[MAX_NAME_LEN];
+} LoggedUser;
+
+extern LoggedUser logged_users[MAX_USERS];
+extern int logged_user_count;
+
 int authenticate_user(const char* login, const char* password, int sockfd);
 int register_user(const char* login, const char* password, int sockfd);
+int is_user_logged_in(const char* login);
+int add_logged_user(int player_id, int sockfd, const char* login);
+int remove_logged_user_by_fd(int sockfd);
+char* get_active_users_list();
 
 #endif
