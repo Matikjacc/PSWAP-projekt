@@ -56,7 +56,19 @@ int authenticate_user(const char* login, const char* password, int sockfd) {
 
 int register_user(const char* login, const char* password, int sockfd) {
     if (user_count >= MAX_USERS) return -1;
-    if (find_user_by_login(login) != -1) return -2;  // Login zajęty
+    if (find_user_by_login(login) != -1) {
+        fprintf(stderr, "Użytkownik o loginie %s już istnieje.\n", login);
+        TLVMessage msg;
+        msg.type = MSG_REGISTER_LOGIN_TAKEN;
+        msg.length = 0;
+        ssize_t total_size = sizeof(msg.type) + sizeof(msg.length);
+        if (send(sockfd, &msg, total_size, 0) < 0)
+        {
+            perror("send register login taken");
+            return -1;
+        }
+        return -2;    
+    }
     int user_id;
     while (find_user_by_id(user_id = rand()) != -1);
     strncpy(users_auth[user_count].login, login, MAX_NAME_LEN);

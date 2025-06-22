@@ -41,6 +41,7 @@ bool authenticate(int sockfd){
         password[strcspn(password, "\n")] = 0;
         if (strlen(username) == 0 || strlen(password) == 0) {
             fprintf(stderr, "Nazwa użytkownika i hasło nie mogą być puste.\n");
+            sleep(3);
             return false;
         }
 
@@ -57,6 +58,7 @@ bool authenticate(int sockfd){
         password[strcspn(password, "\n")] = 0;
         if (strlen(username) == 0 || strlen(password) == 0) {
             fprintf(stderr, "Nazwa użytkownika i hasło nie mogą być puste.\n");
+            sleep(3);
             return false;
         }
         printf("Próba logowania...\n");
