@@ -18,79 +18,59 @@ void game_init(Game *game) {
     game->status = IN_PROGRESS;
 }
 
-int game_make_move(Game *game) {
-    // Check if the game is still in progress
-    if (game->status != IN_PROGRESS) {
-        return -1; // Game is not in progress
-    }
-    // Check if the move is valid
-    if (game->current_turn != CELL_X && game->current_turn != CELL_O) {
-        return -2; // Invalid turn
-    }
-    // Find lobby of the game
-    printf("Game is still in progress, current turn: %c\n", game->current_turn);
+int game_make_move(Move *move, int player_id) {
+    // Find the game by player_id
+    Game *game = NULL;
     int i;
-    int id_player1, id_player2;
-    short move_made = 0;
-    for(i = 0; i < MAX_LOBBIES; i++) {
-        if (lobbies[i].game.game_id == game->game_id) {
-            for (int row = 0; row < BOARD_SIZE; row++) {
-                for (int col = 0; col < BOARD_SIZE; col++) {
-                    if (lobbies[i].game.board[row][col] == CELL_EMPTY && game->board[row][col] == game->current_turn) {
-                        game->board[row][col] = game->current_turn;
-                        game->current_turn = (game->current_turn == CELL_X) ? CELL_O : CELL_X;
-                        game->status = game_check_status(game);
-
-                        
-                        if(game->status != IN_PROGRESS);
-
-                        if(game->status == WIN_X) {
-                            id_player1 = find_user_by_id(lobbies[i].players[0].player_id);
-                            id_player2 = find_user_by_id(lobbies[i].players[1].player_id);
-                            users_auth[id_player1].games_played++;
-                            users_auth[id_player2].games_played++;
-                            users_auth[id_player1].games_won++;
-                            users_auth[id_player2].games_lost++;
-                            save_users(USER_DB_FILE);
-                        } else if(game->status == WIN_O) {
-                            users_auth[id_player1].games_played++;
-                            users_auth[id_player2].games_played++;
-                            users_auth[id_player2].games_won++;
-                            users_auth[id_player1].games_lost++;
-                            save_users(USER_DB_FILE);
-                            printf("Player O wins!\n");
-                        } else if(game->status == DRAW) {
-                            users_auth[id_player1].games_played++;
-                            users_auth[id_player2].games_played++;
-                            save_users(USER_DB_FILE);
-                            printf("Game is a draw!\n");
-                        }
-                        printf("Move made at (%d, %d) by player %c\n", row, col, game->current_turn == CELL_X ? 'X' : 'O');
-                        move_made = 1;
-                        break;
-                    }
-                }
+    for (i = 0; i < MAX_LOBBIES; i++) {
+        if (lobbies[i].game.game_id != -1) { // Check if the
+            // game is initialized
+            if ((lobbies[i].players[0].player_id == player_id || lobbies[i].players[1].player_id == player_id) && lobbies[i].game.status == IN_PROGRESS) {
+                game = &lobbies[i].game;
+                break;
             }
-            break;
         }
     }
-    if  (!move_made) {
-        TLVMessage msg;
-        msg.type = MSG_WRONG_MOVE;
-        msg.length = 0;
-        if (send(lobbies[i].players[lobbies->game.current_turn].player_fd, &msg, sizeof(msg.type) + sizeof(msg.length), 0) < 0) {
-            perror("send wrong move");
-            return -2; 
-        }
+    if (game == NULL) {
+        fprintf(stderr, "Game not found for player ID %d\n", player_id);
+        return -1; // Game not found
     }
-    if (i == MAX_LOBBIES) {
-        return -3;
+    if (game->current_turn != (player_id == lobbies[i].players[0].player_id ? CELL_X : CELL_O)) {
+        fprintf(stderr, "It's not your turn, player ID %d\n", player_id);
+        return -2; // Not your turn
+    }
+    if (move->row < 0 || move->row >= BOARD_SIZE || move->col < 0 || move->col >= BOARD_SIZE) {
+        fprintf(stderr, "Invalid move coordinates: (%d, %d)\n", move->row, move->col);
+        return -3; // Invalid move
+    }
+    if (game->board[move->row][move->col] != CELL_EMPTY)
+    {
+        fprintf(stderr, "Cell (%d, %d) is already occupied\n", move->row, move->col);
+        return -4; // Cell already occupied
+    }
+    game->board[move->row][move->col] = game->current_turn;
+    GameStatus status = game_check_status(game);
+    if (status == IN_PROGRESS) {
+        game->current_turn = (game->current_turn == CELL_X) ? CELL_O :
+                                CELL_X;
+    } else {
+        // Game finished, set the status
+        game->status = status;
+        // Save the game result to the database
+        if (game->status == WIN_X || game->status == WIN_O) {
+            int winner_id = (game->status == WIN_X) ? lobbies[i].players[0].player_id : lobbies[i].players[1].player_id;
+            int winner_index = find_user_by_id(winner_id);
+            int loser_id = (game->status == WIN_X) ? lobbies[i].players[1].player_id : lobbies[i].players[0].player_id;
+            int loser_index = find_user_by_id(loser_id);
+            users_auth[winner_index].games_won++;
+            users_auth[loser_index].games_lost++;
+            save_users(USER_DB_FILE);
+        }
     }
     TLVMessage msg;
     msg.type = MSG_RESULT;
     msg.length = sizeof(Game);
     memcpy(msg.value, game, sizeof(Game));
-    memcpy(lobbies[i].game.board, game->board, sizeof(game->board));
     ssize_t total_size = sizeof(msg.type) + sizeof(msg.length) + msg.length;
     for (int j = 0; j < lobbies[i].player_count; j++) {
         if (send(lobbies[i].players[j].player_fd, &msg, total_size, 0) < 0) {
@@ -164,4 +144,15 @@ Cell game_get_cell(const Game *game, int row, int col) {
     if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE)
         return CELL_EMPTY;
     return game->board[row][col];
+}
+
+int check_if_player_in_game(int player_fd) {
+    for (int i = 0; i < MAX_LOBBIES; i++) {
+        for (int j = 0; j < lobbies[i].player_count; j++) {
+            if (lobbies[i].players[j].player_fd == player_fd) {
+                return 1; 
+            }
+        }
+    }
+    return 0;
 }

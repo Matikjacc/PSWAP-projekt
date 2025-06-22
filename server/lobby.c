@@ -56,11 +56,20 @@ int lobby_join(int player_fd, int player_id) {
             msg.type = MSG_JOIN_LOBBY_SUCCESS;
             game_info.game = *game;
 
-            memcpy(msg.value, &game_info, sizeof(game_info));
-            if (send(player_fd, &msg, sizeof(msg), 0) < 0) {
-                perror("send join lobby success");
+            ssize_t header_size = sizeof(msg.type) + sizeof(msg.length);
+            if (send(player_fd, &msg, header_size, 0) < 0) {
+                perror("send join lobby header");
                 return -1;
             }
+
+            memcpy(msg.value, &game_info, sizeof(game_info));
+            if(msg.length > 0) {
+                if (send(player_fd, msg.value, msg.length, 0) < 0) {
+                    perror("send join lobby value");
+                    return -1;
+                }
+            }
+            
             if (lobby->player_count == MAX_PLAYERS_PER_LOBBY) {
                 printf("Lobby %d jest pełne. Wysyłam wiadomość do pierwszego gracza.\n", lobby->lobby_id);
                 TLVMessage other_client_msg;

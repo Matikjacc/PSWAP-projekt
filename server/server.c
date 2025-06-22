@@ -78,6 +78,7 @@ void handle_client_message(int client_fd) {
             msg.length = 0;
             send(client_fd, &msg, sizeof(msg.type) + sizeof(msg.length), 0);
         }
+        return;
     } else if (msg.type == MSG_REGISTER) {
         const char* login = msg.value;
         const char* password = msg.value + strlen(login) + 1;
@@ -89,7 +90,20 @@ void handle_client_message(int client_fd) {
             msg.length = 0;
             send(client_fd, &msg, sizeof(msg.type) + sizeof(msg.length), 0);
         }
-    } else if(msg.type == MSG_RANKING) {
+        return;
+    } 
+    
+    //Authenticated messages only
+    AuthenicatedMessage auth_msg;
+    memcpy(&auth_msg, msg.value, msg.length);
+    if(find_user_by_id(auth_msg.player_id) < 0) {
+        fprintf(stderr, "Błąd: Nie znaleziono użytkownika o ID %d.\n", auth_msg.player_id);
+        msg.type = MSG_ERROR;
+        msg.length = 0;
+        send(client_fd, &msg, sizeof(msg.type) + sizeof(msg.length), 0);
+        return;
+    }
+    if(msg.type == MSG_RANKING) {
         printf("Otrzymano żądanie rankingu.\n");
         char* ranking = get_statistics();
         if (ranking == NULL) {
@@ -113,17 +127,17 @@ void handle_client_message(int client_fd) {
             return;
         }
 
-        printf("Wysłano odpowiedź z rankingiem:\n%s\n", ranking);
+        printf("Wysłano odpowiedź z rankingiem do:\n%d\n", auth_msg.player_id);
     }else if(msg.type == MSG_JOIN_LOBBY) {
         int player_id;
-        memcpy(&player_id, msg.value, sizeof(int));
+        player_id = auth_msg.player_id;
         printf("Klient %d chce dołączyć do lobby.\n", player_id);
         lobby_join(client_fd, player_id);
     }else if(msg.type == MSG_MOVE){
-        Game game;
-        memcpy(&game, msg.value, sizeof(Game));
-        printf("Otrzymano ruch od gracza. ID gry: %d\n", game.game_id);
-        game_make_move(&game);
+        Move move;
+        memcpy(&move, auth_msg.value, sizeof(Move));
+        printf("Otrzymano ruch od gracza %d.\n", auth_msg.player_id);
+        game_make_move(&move, auth_msg.player_id);
     }else {
         fprintf(stderr, "Nieznany typ wiadomości: %u\n", msg.type);
     }

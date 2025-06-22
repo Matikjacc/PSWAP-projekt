@@ -2,35 +2,43 @@
 #include <string.h>
 #include "game.h"
 #include "client.h"
+#include "network.h"
+#include "client.h"
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 void game_client_init(int sockfd)
 {
-
     TLVMessage msg;
     msg.type = MSG_JOIN_LOBBY;
-    int user_id = user.id;
-    memcpy(msg.value, &user_id, sizeof(int));
-    msg.length = sizeof(msg.value);
+    msg.length = sizeof(int); // tylko player_id
+    memcpy(msg.value, &user.id, sizeof(int));
 
-    // send the join lobby message
-    ssize_t total_size = sizeof(msg.type) + sizeof(msg.length) + sizeof(msg.value);
-    printf("Wysyłanie wiadomości dołączenia do lobby: user_id=%d\n", user_id);
-    if (send(sockfd, &msg, total_size, 0) < 0)
-    {
+    ssize_t total_size = sizeof(msg.type) + sizeof(msg.length) + msg.length;
+    if (send(sockfd, &msg, total_size, 0) < 0) {
         perror("send join lobby");
         return;
     }
-    printf("Wysłano wiadomość dołączenia do lobby.\n");
+    printf("Wysłano wiadomość dołączenia do lobby: user_id=%d\n", user.id);
     // receive the game message
-    ssize_t bytes_received = recv(sockfd, &msg, sizeof(msg), 0);
-    if (bytes_received < 0)
-    {
-        perror("recv join lobby");
+    ssize_t header_bytes = recv(sockfd, &msg, sizeof(msg.type) + sizeof(msg.length), 0);
+    if (header_bytes < 0){
+        perror("recv join lobby header");
+        return;
+    } else if (header_bytes == 0) {
+        fprintf(stderr, "Serwer zamknął połączenie.\n");
+        close(sockfd);
+        exit(0);
         return;
     }
+    printf("Otrzymano wiadomość od serwera: type=%d, length=%d\n", msg.type, msg.length);
+    ssize_t value_bytes = recv(sockfd, msg.value, msg.length, 0);
+    if (value_bytes < 0){
+        perror("recv join lobby value");
+        return;
+    }
+
     GameInfo game_info;
     memcpy(&game_info, msg.value, sizeof(GameInfo));
 
@@ -187,11 +195,15 @@ void start_game(GameInfo *game_info, int sockfd)
 
             game->board[row][col] = game->current_turn;
 
-            // Send move to server
-            memset(&msg, 0, sizeof(msg));
+            Move move;
+            AuthenicatedMessage auth_msg;
+            move.row = row;
+            move.col = col;
             msg.type = MSG_MOVE;
-            msg.length = sizeof(Game);
-            memcpy(msg.value, game, sizeof(Game));
+            msg.length = sizeof(int) + sizeof(move.row) + sizeof(move.col);
+            auth_msg.player_id = user.id;
+            memcpy(auth_msg.value, &move, sizeof(Move));
+            memcpy(msg.value, &auth_msg, sizeof(auth_msg.player_id) + sizeof(move));
             if (send(sockfd, &msg, sizeof(msg.type) + sizeof(msg.length) + msg.length, 0) < 0)
             {
                 perror("send move");

@@ -3,12 +3,6 @@
 #define BOARD_SIZE 3
 #define MAX_PLAYERS_PER_LOBBY 2
 
-
-typedef struct {
-    int player_fd;
-    int player_id;
-} Player;
-
 typedef enum {
     LOBBY_WAITING,
     LOBBY_FULL,
@@ -30,12 +24,17 @@ typedef enum {
 } Cell;
 
 typedef struct {
+    int player_fd;
+    int player_id;
+} Player;
+
+
+typedef struct {
     int game_id;
     Cell board[BOARD_SIZE][BOARD_SIZE];
     Cell current_turn;
     GameStatus status;
 } Game;
-
 
 
 typedef struct {
@@ -56,5 +55,10 @@ typedef struct {
     int player_id;
     char opponent_name[32];
 } StartMessage;
+
+typedef struct {
+    int row;
+    int col;
+} __attribute__((packed)) Move;
 
 #endif

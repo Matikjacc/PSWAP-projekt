@@ -36,4 +36,9 @@ typedef struct {
     char login[32];
 } UserInfo;
 
+typedef struct {
+    int player_id;
+    char value[MAX_PAYLOAD-sizeof(int)];
+} __attribute__((packed)) AuthenicatedMessage;
+
 #endif
