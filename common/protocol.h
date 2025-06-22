@@ -22,7 +22,9 @@ typedef enum {
     MSG_RANKING,
     MSG_RANKING_RESPONSE,
     MSG_HISTORY,
-    MSG_ERROR
+    MSG_ERROR,
+    MSG_SERVER_DISCOVERY,
+    MSG_SERVER_DISCOVERY_RESPONSE,
 } MessageType;
 
 typedef struct {

@@ -15,10 +15,9 @@
 #include "lobby.h"
 #include "game.h"
 #include "storage.h"
+#include "server_discovery.h"
+#include "config.h"
 
-#define PORT 1234
-#define BACKLOG 10
-#define MAX_EVENTS 10
 
 // Make socket non-blocking
 static int make_socket_non_blocking(int sfd) {
@@ -174,6 +173,18 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+    int discovery_fd = init_discovery_socket();
+    if (discovery_fd >= 0) {
+        ev.events = EPOLLIN;
+        ev.data.fd = discovery_fd;
+        if (epoll_ctl(epollfd, EPOLL_CTL_ADD, discovery_fd, &ev) == -1) {
+            perror("epoll_ctl discovery");
+            close(discovery_fd);
+        } else {
+            printf("[Discovery] Nasłuchuję multicast na %s:%d\n", MULTICAST_GROUP, MULTICAST_PORT);
+        }
+    }
+
     ev.events = EPOLLIN;
     ev.data.fd = server_fd;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, server_fd, &ev) == -1) {
@@ -214,7 +225,11 @@ int main() {
                     close(client_fd);
                     continue;
                 }
-            } else {
+            } else if (events[n].data.fd == discovery_fd) {
+                // Obsługa multicast server discovery
+                handle_discovery_message(discovery_fd);
+            }
+            else {
                 // Obsługa danych od klienta
                 handle_client_message(events[n].data.fd);
             }

@@ -239,6 +239,7 @@ void start_game(GameInfo *game_info, int sockfd)
     {
         printf("Gra zakończona w nieznanym stanie.\n");
     }
+    sleep(5);
 }
 
 Cell char_to_cell(char c)
