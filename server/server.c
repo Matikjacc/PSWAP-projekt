@@ -9,6 +9,12 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#include <signal.h>       // signal(), SIGHUP, SIG_IGN
+#include <syslog.h>       // openlog(), syslog(), LOG_*
+#include <sys/stat.h>     // umask()
+#include <sys/types.h>    // pid_t, uid_t
+#include <sys/resource.h> // getrlimit(), struct rlimit
+
 #include "auth.h"
 #include "protocol.h"
 #include "ranking.h"
@@ -18,6 +24,52 @@
 #include "server_discovery.h"
 #include "config.h"
 
+#define MAXFD 64
+
+int
+daemon_init(const char *pname, int facility, uid_t uid)
+{
+	int		i, p;
+	pid_t	pid;
+
+	if ( (pid = fork()) < 0)
+		return (-1);
+	else if (pid)
+		exit(0);			/* parent terminates */
+
+	/* child 1 continues... */
+
+	if (setsid() < 0)			/* become session leader */
+		return (-1);
+
+	signal(SIGHUP, SIG_IGN);
+	if ( (pid = fork()) < 0)
+		return (-1);
+	else if (pid)
+		exit(0);			/* child 1 terminates */
+
+	/* child 2 continues... */
+
+	chdir("/tmp");				/* change working directory  or chroot()*/
+//	chroot("/tmp");
+
+	/* close off file descriptors */
+	for (i = 0; i < MAXFD; i++){
+        close(i);
+	}
+
+	/* redirect stdin, stdout, and stderr to /dev/null */
+	p= open("/dev/null", O_RDONLY);
+	open("/dev/null", O_RDWR);
+	open("/dev/null", O_RDWR);
+
+	openlog(pname, LOG_PID, facility);
+	
+        syslog(LOG_ERR," STDIN =   %i\n", p);
+	setuid(uid); /* change user */
+	
+	return (0);				/* success */
+}
 
 // Make socket non-blocking
 static int make_socket_non_blocking(int sfd) {
@@ -170,6 +222,13 @@ void handle_client_message(int client_fd) {
 }
 
 int main() {
+
+    // Inicjalizacja demona
+    if (daemon_init("game_server", LOG_USER, 1000) < 0) {
+        perror("daemon_init");
+        exit(EXIT_FAILURE);
+    }
+
     int server_fd, client_fd;
     struct sockaddr_in server_addr, client_addr;
     socklen_t client_len = sizeof(client_addr);
