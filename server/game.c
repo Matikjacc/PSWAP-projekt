@@ -203,6 +203,9 @@ void end_user_games(int player_fd) {
                 lobbies[i].player_count = 0;
                 if (lobbies[i].player_count == 0) {
                     lobbies[i].game.game_id = -1; 
+                    lobbies[i].game.status = IN_PROGRESS;
+                    lobbies[i].status = LOBBY_WAITING;
+                    lobbies[i].lobby_id = -1;
                 }
                 return;
             }

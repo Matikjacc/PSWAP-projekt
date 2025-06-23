@@ -176,6 +176,9 @@ int main() {
     struct epoll_event ev, events[MAX_EVENTS];
     int epollfd;
 
+    // True random seed for generating unique lobby IDs and Game IDs
+    srand(time(NULL));
+
     if (load_users(USER_DB_FILE) < 0) {
         fprintf(stderr, "Nie udało się załadować bazy danych użytkowników.\n");
         return 1;
