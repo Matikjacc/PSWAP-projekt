@@ -122,6 +122,7 @@ void register_account(int sockfd, const char* login, const char* password){
         return;
     }
     if (response.type == MSG_REGISTER_SUCCESS) {
+        memcpy(&user, response.value, sizeof(UserInfo));
         printf("Rejestracja zakończona sukcesem!\n");
         sleep(3);
     }

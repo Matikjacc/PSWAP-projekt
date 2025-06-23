@@ -39,6 +39,7 @@ void handle_client_message(int client_fd) {
     ssize_t header_bytes = read(client_fd, &msg, sizeof(msg.type) + sizeof(msg.length));
     if (header_bytes == 0) {
         printf("Klient się rozłączył.\n");
+        end_user_games(client_fd);
         remove_logged_user_by_fd(client_fd);
         close(client_fd);
         return;

@@ -64,6 +64,8 @@ int game_make_move(Move *move, int player_id) {
             int loser_index = find_user_by_id(loser_id);
             users_auth[winner_index].games_won++;
             users_auth[loser_index].games_lost++;
+            users_auth[winner_index].games_played++;
+            users_auth[loser_index].games_played++;
             save_users(USER_DB_FILE);
         }
     }
@@ -155,4 +157,49 @@ int check_if_player_in_game(int player_fd) {
         }
     }
     return 0;
+}
+
+void end_user_games(int player_fd) {
+    for (int i = 0; i < MAX_LOBBIES; i++) {
+        for (int j = 0; j < lobbies[i].player_count; j++) {
+            if (lobbies[i].players[j].player_fd == player_fd) {
+                printf("Ending game for player %d in lobby %d\n", lobbies[i].players[j].player_id, lobbies[i].game.game_id);
+                // Send to the other player that the game has ended and he won
+                TLVMessage msg;
+                msg.type = MSG_RESULT;
+                msg.length = sizeof(Game);
+                Game game = lobbies[i].game;
+                game.status = (lobbies[i].players[j].player_id == lobbies[i].players[0].player_id) ? WIN_O : WIN_X; // The other player wins
+                memcpy(msg.value, &game, sizeof(Game));
+                ssize_t total_size = sizeof(msg.type) + sizeof(msg.length) + msg.length;
+                for (int k = 0; k < lobbies[i].player_count; k++) {
+                    if (lobbies[i].players[k].player_fd != player_fd) {
+                        if (send(lobbies[i].players[k].player_fd, &msg, total_size, 0) < 0) {
+                            perror("send game result");
+                        }
+                    }
+                }
+
+                if (game.status == WIN_X || game.status == WIN_O) {
+                    int winner_id = (game.status == WIN_X) ? lobbies[i].players[0].player_id : lobbies[i].players[1].player_id;
+                    int winner_index = find_user_by_id(winner_id);
+                    int loser_id = (game.status == WIN_X) ? lobbies[i].players[1].player_id : lobbies[i].players[0].player_id;
+                    int loser_index = find_user_by_id(loser_id);
+                    users_auth[winner_index].games_won++;
+                    users_auth[loser_index].games_lost++;
+                    users_auth[winner_index].games_played++;
+                    users_auth[loser_index].games_played++;
+                    save_users(USER_DB_FILE);
+                }
+
+                lobbies[i].players[j].player_fd = -1; 
+                lobbies[i].players[j].player_id = -1;
+                lobbies[i].player_count = 0;
+                if (lobbies[i].player_count == 0) {
+                    lobbies[i].game.game_id = -1; 
+                }
+                return;
+            }
+        }
+    }
 }
