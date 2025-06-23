@@ -11,11 +11,12 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <syslog.h>
 
 int init_discovery_socket() {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
-        perror("socket");
+        syslog(LOG_ERR, "socket: %s", strerror(errno));
         return -1;
     }
 
@@ -29,7 +30,7 @@ int init_discovery_socket() {
     };
 
     if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        perror("bind");
+        syslog(LOG_ERR, "bind: %s", strerror(errno));
         close(sock);
         return -1;
     }
@@ -39,7 +40,7 @@ int init_discovery_socket() {
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);
 
     if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&mreq, sizeof(mreq)) < 0) {
-        perror("setsockopt");
+        syslog(LOG_ERR, "setsockopt IP_ADD_MEMBERSHIP: %s", strerror(errno));
         close(sock);
         return -1;
     }
@@ -63,15 +64,15 @@ void handle_discovery_message(int sock_fd) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return;  // Nie ma danych
         }
-        perror("recvfrom discovery");
+        syslog(LOG_ERR, "recvfrom discovery: %s", strerror(errno));
         return;
     }
 
     // Sprawdzenie poprawności wiadomości
     if (msg.type == MSG_SERVER_DISCOVERY) {
-        printf("[Discovery] TLV zapytanie od %s:%d\n",
-               inet_ntoa(client_addr.sin_addr),
-               ntohs(client_addr.sin_port));
+        syslog(LOG_INFO, "[Discovery] TLV zapytanie od %s:%d",
+            inet_ntoa(client_addr.sin_addr),
+            ntohs(client_addr.sin_port));
 
         // Przygotuj wiadomość odpowiedzi
         TLVMessage response;
