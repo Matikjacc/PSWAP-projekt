@@ -1,0 +1,12 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define PORT 1234
+#define BACKLOG 10
+#define MAX_EVENTS 10
+
+#define MULTICAST_GROUP "239.1.4.8"
+#define MULTICAST_PORT 5555
+#define DISCOVERY_MESSAGE "DISCOVER_TICTACTOE_SERVER"
+
+#endif // CONFIG_H

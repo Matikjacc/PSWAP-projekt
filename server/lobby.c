@@ -18,7 +18,6 @@ void lobby_init_all() {
         lobbies[1].game.game_id = -1;
         memset(&lobbies[i].game.board, CELL_EMPTY, sizeof(lobbies[i].game.board));
         lobbies[i].game.current_turn = CELL_X;
-
     }
 }
 

@@ -41,6 +41,7 @@ bool authenticate(int sockfd){
         password[strcspn(password, "\n")] = 0;
         if (strlen(username) == 0 || strlen(password) == 0) {
             fprintf(stderr, "Nazwa użytkownika i hasło nie mogą być puste.\n");
+            sleep(3);
             return false;
         }
 
@@ -57,6 +58,7 @@ bool authenticate(int sockfd){
         password[strcspn(password, "\n")] = 0;
         if (strlen(username) == 0 || strlen(password) == 0) {
             fprintf(stderr, "Nazwa użytkownika i hasło nie mogą być puste.\n");
+            sleep(3);
             return false;
         }
         printf("Próba logowania...\n");
@@ -71,7 +73,8 @@ int get_menu_option() {
     printf("\033[2J\033[H");
     printf("1. Graj\n");
     printf("2. Wyświetl statystyki\n");
-    printf("3. Wyjdź\n");
+    printf("3. Lista aktywnych graczy\n");
+    printf("4. Wyjdź\n");
     printf("Wybierz opcję (1-4): ");
     if (scanf("%d", &option) != 1 || option < OPTION_LOGIN || option > OPTION_EXIT) {
         fprintf(stderr, "Nieprawidłowa opcja.\n");
@@ -100,6 +103,33 @@ int get_statistics(int sockfd){
     }
     if (response.type == MSG_RANKING_RESPONSE) {
         printf("Ranking:\n%s\n", response.value);
+        getchar();
+    } else {
+        fprintf(stderr, "Otrzymano nieprawidłową odpowiedź od serwera.\n");
+        return -1;
+    }
+    return 0;
+}
+
+int get_active_players(int sockfd) {
+    TLVMessage msg;
+    msg.type = MSG_ACTIVE_USERS;
+    msg.length = 0;
+    if (send(sockfd, &msg, sizeof(msg.type) + sizeof(msg.length), 0) < 0) {
+        perror("send");
+        return -1;
+    }
+    TLVMessage response;
+    ssize_t bytes_received = recv(sockfd, &response, sizeof(response), 0);
+    if (bytes_received < 0) {
+        perror("recv");
+        return -1;
+    } else if (bytes_received == 0) {
+        printf("Połączenie z serwerem zostało zamknięte.\n");
+        return -1;
+    }
+    if (response.type == MSG_ACTIVE_USERS_RESPONSE) {
+        printf("\n%s\n", response.value);
         getchar();
     } else {
         fprintf(stderr, "Otrzymano nieprawidłową odpowiedź od serwera.\n");

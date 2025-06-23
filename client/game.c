@@ -45,6 +45,14 @@ void game_client_init(int sockfd)
     if (msg.type == MSG_ALL_LOBBIES_FULL)
     {
         fprintf(stderr, "Wszystkie lobby są pełne.\n");
+        sleep(3);
+        return;
+    }
+
+    if (msg.type == MSG_JOIN_LOBBY_FAIL)
+    {
+        fprintf(stderr, "Nie możesz dołączyć do lobby, w którym jesteś.\n");
+        sleep(3);
         return;
     }
 
@@ -52,6 +60,7 @@ void game_client_init(int sockfd)
     {
         fprintf(stderr, "Nieprawidłowa odpowiedź od serwera. Type: %d, Length: %d\n",
                 msg.type, msg.length);
+        sleep(3);
         return;
     }
 
@@ -249,6 +258,7 @@ void start_game(GameInfo *game_info, int sockfd)
     {
         printf("Gra zakończona w nieznanym stanie.\n");
     }
+    sleep(5);
 }
 
 void game_client_draw(const Game *game)
