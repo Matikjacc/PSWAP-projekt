@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <syslog.h>
+#include <errno.h>
 #include <sys/stat.h>
 #include "auth.h"
 #include "protocol.h"
@@ -18,13 +20,13 @@ int authenticate_user(const char* login, const char* password, int sockfd) {
     if (idx == -1) return -1;
 
     if (is_user_logged_in(login)) {
-        fprintf(stderr, "Użytkownik %s jest już zalogowany.\n", login);
+        syslog(LOG_ERR, "Użytkownik %s jest już zalogowany.", login);
         TLVMessage msg;
         msg.type = MSG_LOGIN_ALREADY_LOGGED_IN;
         msg.length = 0;
         ssize_t total_size = sizeof(msg.type) + sizeof(msg.length);
         if (send(sockfd, &msg, total_size, 0) < 0) {
-            perror("send login failure");
+            syslog(LOG_ERR, "send login failure: %s", strerror(errno));
             return -1;
         }
         return -2;
@@ -41,12 +43,12 @@ int authenticate_user(const char* login, const char* password, int sockfd) {
         memcpy(msg.value, &user_info, sizeof(UserInfo));
         ssize_t total_size = sizeof(msg.type) + sizeof(msg.length) + sizeof(UserInfo);
         if (send(sockfd, &msg, total_size, 0) < 0) {
-            perror("send login success");
+            syslog(LOG_ERR, "send login success: %s", strerror(errno));
             return -1;
         }
 
         if (add_logged_user(user_info.id, sockfd, login) < 0) {
-            fprintf(stderr, "Lista zalogowanych pełna, nie można dodać użytkownika.\n");
+            syslog(LOG_ERR, "Lista zalogowanych pełna, nie można dodać użytkownika.");
             return -1;
         }
         return 0;
@@ -57,14 +59,14 @@ int authenticate_user(const char* login, const char* password, int sockfd) {
 int register_user(const char* login, const char* password, int sockfd) {
     if (user_count >= MAX_USERS) return -1;
     if (find_user_by_login(login) != -1) {
-        fprintf(stderr, "Użytkownik o loginie %s już istnieje.\n", login);
+        syslog(LOG_ERR, "Użytkownik o loginie %s już istnieje.", login);
         TLVMessage msg;
         msg.type = MSG_REGISTER_LOGIN_TAKEN;
         msg.length = 0;
         ssize_t total_size = sizeof(msg.type) + sizeof(msg.length);
         if (send(sockfd, &msg, total_size, 0) < 0)
         {
-            perror("send register login taken");
+            syslog(LOG_ERR, "send register login taken: %s", strerror(errno));
             return -1;
         }
         return -2;    
@@ -80,7 +82,7 @@ int register_user(const char* login, const char* password, int sockfd) {
     user_count++;
 
     if(save_users(USER_DB_FILE) < 0){
-        fprintf(stderr, "Błąd podczas zapisywania użytkowników do pliku.\n");
+        syslog(LOG_ERR, "Błąd podczas zapisywania użytkowników do pliku.");
         return -3;
     }
 
@@ -94,12 +96,12 @@ int register_user(const char* login, const char* password, int sockfd) {
     memcpy(msg.value, &user_info, sizeof(UserInfo));
     ssize_t total_size = sizeof(msg.type) + sizeof(msg.length) + msg.length;
     if (send(sockfd, &msg, total_size, 0) < 0) {
-        perror("send register success");
+        syslog(LOG_ERR, "send register success: %s", strerror(errno));
         return -4;
     }
 
     if (add_logged_user(user_info.id, sockfd, login) < 0) {
-        fprintf(stderr, "Lista zalogowanych pełna, nie można dodać użytkownika.\n");
+        syslog(LOG_ERR, "Lista zalogowanych pełna, nie można dodać użytkownika.");
         return -1;
     }
 

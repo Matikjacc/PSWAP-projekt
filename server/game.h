@@ -15,6 +15,6 @@ Cell game_current_turn(const Game *game);
 
 Cell game_get_cell(const Game *game, int row, int col);
 
-end_user_games(int client_fd);
+void end_user_games(int client_fd);
 
 #endif // GAME_H
