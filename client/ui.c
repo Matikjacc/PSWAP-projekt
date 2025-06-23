@@ -113,9 +113,13 @@ int get_statistics(int sockfd){
 
 int get_active_players(int sockfd) {
     TLVMessage msg;
+    AuthenicatedMessage auth_msg;
+    auth_msg.player_id = user.id;
+    memcpy(msg.value, &auth_msg, sizeof(auth_msg));
     msg.type = MSG_ACTIVE_USERS;
-    msg.length = 0;
-    if (send(sockfd, &msg, sizeof(msg.type) + sizeof(msg.length), 0) < 0) {
+    msg.length = sizeof(user.id);
+    printf("Wysyłam żądanie aktywnych graczy... user_id: %d\n", user.id);
+    if (send(sockfd, &msg, sizeof(msg.type) + sizeof(msg.length) + msg.length, 0) < 0) {
         perror("send");
         return -1;
     }
