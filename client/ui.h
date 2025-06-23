@@ -21,5 +21,6 @@ typedef enum {
 bool authenticate(int sockfd);
 int get_menu_option(void);
 int get_statistics(int sockfd);
+int get_active_players(int sockfd);
 
 #endif

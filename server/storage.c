@@ -4,11 +4,6 @@
 #include <sys/stat.h>
 #include <stdio.h>
 
-int file_exists(const char* filename) {
-    struct stat buffer;
-    return stat(filename, &buffer) == 0;
-}
-
 int find_user_by_login(const char* login) {
     for (int i = 0; i < user_count; i++) {
         if (strcmp(users_auth[i].login, login) == 0)
@@ -33,16 +28,20 @@ int get_name_from_user_id(int player_id, char* name, size_t name_len) {
     return 0;
 }
 
+int file_exists() {
+    struct stat buffer;
+    return stat(USER_DB_FILE, &buffer) == 0;
+}
 
-int load_users(const char* filename) {
-    if (!file_exists(filename)) {
+int load_users() {
+    if (!file_exists(USER_DB_FILE)) {
         // Tworzymy pusty plik, jeśli nie istnieje
-        FILE* f = fopen(filename, "w");
+        FILE* f = fopen(USER_DB_FILE, "w");
         if (f) fclose(f);
         return 0;
     }
 
-    FILE* file = fopen(filename, "r");
+    FILE* file = fopen(USER_DB_FILE, "r");
     if (!file) return -1;
 
     user_count = 0;
@@ -62,8 +61,8 @@ int load_users(const char* filename) {
     return 0;
 }
 
-int save_users(const char* filename) {
-    FILE* file = fopen(filename, "w");
+int save_users() {
+    FILE* file = fopen(USER_DB_FILE, "w");
     if (!file) return -1;
 
     for (int i = 0; i < user_count; i++) {

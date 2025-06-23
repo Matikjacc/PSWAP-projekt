@@ -39,7 +39,7 @@ int authenticate_user(const char* login, const char* password, int sockfd) {
         strncpy(user_info.login, users_auth[idx].login, sizeof(user_info.login) - 1);
         user_info.login[sizeof(user_info.login) - 1] = '\0';
         memcpy(msg.value, &user_info, sizeof(UserInfo));
-        ssize_t total_size = sizeof(msg.type) + sizeof(msg.length) + msg.length;
+        ssize_t total_size = sizeof(msg.type) + sizeof(msg.length) + sizeof(UserInfo);
         if (send(sockfd, &msg, total_size, 0) < 0) {
             perror("send login success");
             return -1;

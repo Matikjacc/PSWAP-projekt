@@ -7,7 +7,7 @@
 
 void game_init(Game *game);
 
-int game_make_move(Game *game);
+int game_make_move(Move *move, int player_id);
 
 GameStatus game_check_status(Game *game);
 

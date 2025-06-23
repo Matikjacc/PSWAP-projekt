@@ -122,6 +122,7 @@ void register_account(int sockfd, const char* login, const char* password){
         return;
     }
     if (response.type == MSG_REGISTER_SUCCESS) {
+        memcpy(&user, response.value, sizeof(UserInfo));
         printf("Rejestracja zakończona sukcesem!\n");
         sleep(3);
     }
@@ -134,4 +135,17 @@ void register_account(int sockfd, const char* login, const char* password){
     } else {
         printf("Otrzymano nieznany typ wiadomości: %u\n", response.type);
     }
+}
+
+void make_authenticated_message(TLVMessage *msg, MessageType type, const void *value, size_t value_length) {
+    msg->type = type;
+    msg->length = sizeof(int) + value_length;
+    AuthenicatedMessage auth_msg;
+    auth_msg.player_id = user.id;
+    printf("Tworzenie wiadomości uwierzytelnionej: type=%d, player_id=%d, value_length=%zu\n", type, auth_msg.player_id, value_length);
+    if (value && value_length > 0) {
+        memcpy(auth_msg.value, value, value_length);
+    }
+
+    memcpy(msg->value, &auth_msg, sizeof(AuthenicatedMessage));
 }

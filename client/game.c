@@ -2,35 +2,43 @@
 #include <string.h>
 #include "game.h"
 #include "client.h"
+#include "network.h"
+#include "client.h"
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 void game_client_init(int sockfd)
 {
-
     TLVMessage msg;
     msg.type = MSG_JOIN_LOBBY;
-    int user_id = user.id;
-    memcpy(msg.value, &user_id, sizeof(int));
-    msg.length = sizeof(msg.value);
+    msg.length = sizeof(int); // tylko player_id
+    memcpy(msg.value, &user.id, sizeof(int));
 
-    // send the join lobby message
-    ssize_t total_size = sizeof(msg.type) + sizeof(msg.length) + sizeof(msg.value);
-    printf("Wysyłanie wiadomości dołączenia do lobby: user_id=%d\n", user_id);
-    if (send(sockfd, &msg, total_size, 0) < 0)
-    {
+    ssize_t total_size = sizeof(msg.type) + sizeof(msg.length) + msg.length;
+    if (send(sockfd, &msg, total_size, 0) < 0) {
         perror("send join lobby");
         return;
     }
-    printf("Wysłano wiadomość dołączenia do lobby.\n");
+    printf("Wysłano wiadomość dołączenia do lobby: user_id=%d\n", user.id);
     // receive the game message
-    ssize_t bytes_received = recv(sockfd, &msg, sizeof(msg), 0);
-    if (bytes_received < 0)
-    {
-        perror("recv join lobby");
+    ssize_t header_bytes = recv(sockfd, &msg, sizeof(msg.type) + sizeof(msg.length), 0);
+    if (header_bytes < 0){
+        perror("recv join lobby header");
+        return;
+    } else if (header_bytes == 0) {
+        fprintf(stderr, "Serwer zamknął połączenie.\n");
+        close(sockfd);
+        exit(0);
         return;
     }
+    printf("Otrzymano wiadomość od serwera: type=%d, length=%d\n", msg.type, msg.length);
+    ssize_t value_bytes = recv(sockfd, msg.value, msg.length, 0);
+    if (value_bytes < 0){
+        perror("recv join lobby value");
+        return;
+    }
+
     GameInfo game_info;
     memcpy(&game_info, msg.value, sizeof(GameInfo));
 
@@ -108,7 +116,7 @@ void game_client_init(int sockfd)
         fprintf(stderr, "Nieznany status lobby: %d\n", game_info.status);
         return;
     }
-    printf("Dołączono do lobby %d. Status: %s\n", game_info.lobby_id, status_to_string(game_info.game.status));
+    printf("Dołączono do lobby %d.", game_info.lobby_id);
 }
 
 void start_game(GameInfo *game_info, int sockfd)
@@ -166,8 +174,6 @@ void start_game(GameInfo *game_info, int sockfd)
             printf("Twoja tura!\n");
             char input[10];
             printf("Ruchy są w formacie: <wiersz> <kolumna>\n");
-            printf("Tura gracza %s.", user.login);
-
         get_player_move:
             int row, col;
             short move_correct = 0;
@@ -198,11 +204,15 @@ void start_game(GameInfo *game_info, int sockfd)
 
             game->board[row][col] = game->current_turn;
 
-            // Send move to server
-            memset(&msg, 0, sizeof(msg));
+            Move move;
+            AuthenicatedMessage auth_msg;
+            move.row = row;
+            move.col = col;
             msg.type = MSG_MOVE;
-            msg.length = sizeof(Game);
-            memcpy(msg.value, game, sizeof(Game));
+            msg.length = sizeof(int) + sizeof(move.row) + sizeof(move.col);
+            auth_msg.player_id = user.id;
+            memcpy(auth_msg.value, &move, sizeof(Move));
+            memcpy(msg.value, &auth_msg, sizeof(auth_msg.player_id) + sizeof(move));
             if (send(sockfd, &msg, sizeof(msg.type) + sizeof(msg.length) + msg.length, 0) < 0)
             {
                 perror("send move");
@@ -251,15 +261,6 @@ void start_game(GameInfo *game_info, int sockfd)
     sleep(5);
 }
 
-Cell char_to_cell(char c)
-{
-    if (c == 'X')
-        return CELL_X;
-    if (c == 'O')
-        return CELL_O;
-    return CELL_EMPTY;
-}
-
 void game_client_draw(const Game *game)
 {
     printf("\n  0 1 2\n");
@@ -277,58 +278,4 @@ void game_client_draw(const Game *game)
         }
         printf("\n");
     }
-}
-
-int game_client_update(Game *game, const char *data)
-{
-    if (!data)
-        return 0;
-
-    char board_str[10];
-    char turn_char;
-    char status_str[32];
-
-    // read from data // CHANGE FORMAT TO TLV
-    if (sscanf(data, "%9[^;];%c;%31s", board_str, &turn_char, status_str) != 3)
-        return 0;
-
-    for (int i = 0; i < 9; ++i)
-    {
-        game->board[i / 3][i % 3] = char_to_cell(board_str[i]);
-    }
-
-    game->current_turn = turn_char;
-    game->status = string_to_status(status_str);
-
-    return 1;
-}
-
-const char *status_to_string(GameStatus status)
-{
-    switch (status)
-    {
-    case IN_PROGRESS:
-        return "IN_PROGRESS";
-    case DRAW:
-        return "DRAW";
-    case WIN_X:
-        return "WIN_X";
-    case WIN_O:
-        return "WIN_O";
-    default:
-        return "UNKNOWN";
-    }
-}
-
-GameStatus string_to_status(const char *str)
-{
-    if (strcmp(str, "IN_PROGRESS") == 0)
-        return IN_PROGRESS;
-    if (strcmp(str, "DRAW") == 0)
-        return DRAW;
-    if (strcmp(str, "WIN_X") == 0)
-        return WIN_X;
-    if (strcmp(str, "WIN_O") == 0)
-        return WIN_O;
-    return IN_PROGRESS; // fallback
 }
