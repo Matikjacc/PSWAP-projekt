@@ -67,6 +67,12 @@ int game_make_move(Move *move, int player_id) {
             users_auth[winner_index].games_played++;
             users_auth[loser_index].games_played++;
             save_users(USER_DB_FILE);
+        } else if(game->status == DRAW) {
+            int player1_index = find_user_by_id(lobbies[i].players[0].player_id);
+            int player2_index = find_user_by_id(lobbies[i].players[1].player_id);
+            users_auth[player1_index].games_played++;
+            users_auth[player2_index].games_played++;
+            save_users(USER_DB_FILE);
         }
     }
     TLVMessage msg;
