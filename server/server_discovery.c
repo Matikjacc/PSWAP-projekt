@@ -45,7 +45,7 @@ int init_discovery_socket() {
         return -1;
     }
 
-    // Ustaw socket jako nieblokujący
+    // non-blocking mode
     int flags = fcntl(sock, F_GETFL, 0);
     fcntl(sock, F_SETFL, flags | O_NONBLOCK);
 
@@ -68,13 +68,12 @@ void handle_discovery_message(int sock_fd) {
         return;
     }
 
-    // Sprawdzenie poprawności wiadomości
     if (msg.type == MSG_SERVER_DISCOVERY) {
         syslog(LOG_INFO, "[Discovery] TLV zapytanie od %s:%d",
             inet_ntoa(client_addr.sin_addr),
             ntohs(client_addr.sin_port));
 
-        // Przygotuj wiadomość odpowiedzi
+        // Prepare response
         TLVMessage response;
         response.type = MSG_SERVER_DISCOVERY_RESPONSE;
         uint16_t port_net = htons(PORT);

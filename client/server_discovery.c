@@ -24,14 +24,12 @@ int discover_server(struct sockaddr_in *server_addr, int timeout_sec) {
     TLVMessage request, response;
     int ret;
 
-    // Utwórz socket UDP
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
         perror("socket");
         return 0;
     }
 
-    // Zezwól na ponowne użycie adresu
     int reuse = 1;
     if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
         perror("setsockopt SO_REUSEADDR");
@@ -39,7 +37,6 @@ int discover_server(struct sockaddr_in *server_addr, int timeout_sec) {
         return 0;
     }
 
-    // Ustaw timeout na odbieranie
     struct timeval tv = { .tv_sec = timeout_sec, .tv_usec = 0 };
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
         perror("setsockopt SO_RCVTIMEO");
@@ -47,18 +44,15 @@ int discover_server(struct sockaddr_in *server_addr, int timeout_sec) {
         return 0;
     }
 
-    // Przygotuj adres multicastowy
     memset(&multicast_addr, 0, sizeof(multicast_addr));
     multicast_addr.sin_family = AF_INET;
     multicast_addr.sin_addr.s_addr = inet_addr(MULTICAST_GROUP);
     multicast_addr.sin_port = htons(DISCOVERY_PORT);
 
-    // Przygotuj wiadomość TLV
     request.type = MSG_SERVER_DISCOVERY;
     request.length = 0; // Brak danych w treści
     memset(request.value, 0, MAX_PAYLOAD);
 
-    // Wyślij wiadomość
     if (sendto(sockfd, &request, sizeof(request.type) + sizeof(request.length), 0,
                (struct sockaddr *)&multicast_addr, sizeof(multicast_addr)) < 0) {
         perror("sendto");
@@ -66,7 +60,6 @@ int discover_server(struct sockaddr_in *server_addr, int timeout_sec) {
         return 0;
     }
 
-    // Odbierz odpowiedź
     ret = recvfrom(sockfd, &response, sizeof(response), 0,
                    (struct sockaddr *)&from_addr, &from_len);
     if (ret < 0) {
