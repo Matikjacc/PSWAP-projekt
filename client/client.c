@@ -46,7 +46,7 @@ int get_server_address_from_user(struct sockaddr_in *server_addr) {
 
         // First try to parse as IPv4 address
         if (inet_pton(AF_INET, input_host, &server_addr->sin_addr) == 1) {
-            // Poprawny adres IPv4
+            // correct ipv4
             return 1;
         } 
 

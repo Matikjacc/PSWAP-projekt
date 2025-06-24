@@ -111,7 +111,7 @@ int register_user(const char* login, const char* password, int sockfd) {
 int is_user_logged_in(const char* login) {
     for (int i = 0; i < logged_user_count; i++) {
         if (strcmp(logged_users[i].login, login) == 0) {
-            return 1; // jest już zalogowany
+            return 1;
         }
     }
     return 0;
@@ -130,15 +130,15 @@ int add_logged_user(int player_id, int sockfd, const char* login) {
 int remove_logged_user_by_fd(int sockfd) {
     for (int i = 0; i < logged_user_count; ++i) {
         if (logged_users[i].socket_fd == sockfd) {
-            // Przesuń resztę użytkowników o jedno miejsce w lewo
+            // shift remaining users down
             for (int j = i; j < logged_user_count - 1; ++j) {
                 logged_users[j] = logged_users[j + 1];
             }
             logged_user_count--;
-            return 0; // Sukces
+            return 0; // success
         }
     }
-    return -1; // Nie znaleziono
+    return -1; // user not found
 }
 
 char* get_active_users_list() {
