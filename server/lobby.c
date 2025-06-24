@@ -1,5 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
+#include <syslog.h>
+#include <errno.h>
 #include <sys/socket.h>
 #include "lobby.h"
 #include "storage.h"
@@ -39,7 +41,7 @@ int lobby_join(int player_fd, int player_id) {
                 lobby->lobby_id = rand();
                 lobby->game.game_id = rand();
                 game_info.game.game_id = lobby->game.game_id;
-                printf("Tworzę nowe lobby o ID: %d\n", lobby->lobby_id);
+                syslog(LOG_INFO, "Tworzę nowe lobby o ID: %d", lobby->lobby_id);
                 game->current_turn = CELL_X;
                 game->status = IN_PROGRESS;
                 lobby->game.status = IN_PROGRESS;
@@ -57,36 +59,36 @@ int lobby_join(int player_fd, int player_id) {
 
             ssize_t header_size = sizeof(msg.type) + sizeof(msg.length);
             if (send(player_fd, &msg, header_size, 0) < 0) {
-                perror("send join lobby header");
+                syslog(LOG_ERR, "Błąd podczas wysyłania nagłówka dołączenia do lobby: %s", strerror(errno));
                 return -1;
             }
 
             memcpy(msg.value, &game_info, sizeof(game_info));
             if(msg.length > 0) {
                 if (send(player_fd, msg.value, msg.length, 0) < 0) {
-                    perror("send join lobby value");
+                    syslog(LOG_ERR, "Błąd podczas wysyłania danych dołączenia do lobby: %s", strerror(errno));
                     return -1;
                 }
             }
             
             if (lobby->player_count == MAX_PLAYERS_PER_LOBBY) {
-                printf("Lobby %d jest pełne. Wysyłam wiadomość do pierwszego gracza.\n", lobby->lobby_id);
+                syslog(LOG_INFO, "Lobby %d jest pełne. Wysyłam wiadomość do pierwszego gracza.", lobby->lobby_id);
                 TLVMessage other_client_msg;
                 other_client_msg.type = MSG_LOBBY_READY;
                 other_client_msg.length = 0;
                 other_client_msg.value[0] = '\0';
                 if(send(lobby->players[0].player_fd, &other_client_msg, sizeof(other_client_msg), 0) < 0) {
-                    perror("send lobby ready to first player");
+                    syslog(LOG_ERR, "Błąd wysyłania wiadomości 'lobby ready' do pierwszego gracza: %s", strerror(errno));
                     return -1;
                 }
                 lobby->status = LOBBY_START;
                 start_game(lobby);
             }
-            printf("Wysłano wiadomość o dołączeniu do lobby.\n");
+            syslog(LOG_INFO, "Wysłano wiadomość o dołączeniu do lobby.");
             return i; 
         }
     }
-    fprintf(stderr, "Wszystkie lobby zostały zapełnione.\n");
+    syslog(LOG_WARNING, "Wszystkie lobby zostały zapełnione.");
 
     msg.type = MSG_ALL_LOBBIES_FULL;
     msg.length = 0;
@@ -97,13 +99,13 @@ int lobby_join(int player_fd, int player_id) {
 
 void start_game(Lobby *lobby) {
     if (lobby->status != LOBBY_START) {
-        fprintf(stderr, "Nie można rozpocząć gry, lobby nie jest gotowe.\n");
+        syslog(LOG_WARNING, "Nie można rozpocząć gry, lobby nie jest gotowe.");
         return;
     }
 
     Game *game = &lobby->game;
     
-    printf("Game ID: %d, Lobby ID: %d\n", game->game_id, lobby->lobby_id);
+    syslog(LOG_INFO, "Game ID: %d, Lobby ID: %d", game->game_id, lobby->lobby_id);
     game_init(game);
     game->status = IN_PROGRESS;
 
@@ -116,27 +118,26 @@ void start_game(Lobby *lobby) {
     start_msg.player_id = lobby->players[lobby->game.current_turn].player_id;
     msg.type = MSG_GAME_START;
     msg.length = sizeof(StartMessage);
-    printf("Rozpoczynam grę w lobby %d\n", lobby->lobby_id);
+    syslog(LOG_INFO, "Rozpoczynam grę w lobby %d", lobby->lobby_id);
     for (int i = 0; i < lobby->player_count; ++i) {
         char opponent_name[32];
         if (get_name_from_user_id(lobby->players[(i + 1)%2].player_id, opponent_name, sizeof(opponent_name)) < 0) {
-            fprintf(stderr, "Nie można pobrać nazwy gracza o ID %d\n", lobby->players[(i + 1)%2].player_id);
+            syslog(LOG_ERR, "Nie można pobrać nazwy gracza o ID %d", lobby->players[(i + 1) % 2].player_id);
             return;
         }
-        printf("Gracz %d: %s\n", i, opponent_name);
+        syslog(LOG_INFO, "Gracz %d: %s", i, opponent_name);
         memset(start_msg.opponent_name, 0, sizeof(start_msg.opponent_name));
         strncpy(start_msg.opponent_name, opponent_name, sizeof(start_msg.opponent_name) - 1);
         start_msg.opponent_name[sizeof(start_msg.opponent_name) - 1] = '\0';
         memcpy(msg.value, &start_msg, sizeof(start_msg));
         if (send(lobby->players[i].player_fd, &msg, sizeof(msg), 0) < 0) {
-            perror("send game start");
+            syslog(LOG_ERR, "Błąd wysyłania wiadomości startowej do gracza: %s", strerror(errno));
             return;
         }
     }
     lobby->status = LOBBY_PLAYING;
 
-    printf("Gra rozpoczęta w lobby %d!\n", lobby->lobby_id);
-
+    syslog(LOG_INFO, "Gra rozpoczęta w lobby %d!", lobby->lobby_id);
 }
 
 void lobby_remove_player(int player_fd) {
@@ -158,6 +159,7 @@ void lobby_remove_player(int player_fd) {
                     lobby->status = LOBBY_WAITING; 
                 }
 
+                syslog(LOG_INFO, "Gracz z fd=%d został usunięty z lobby %d", player_fd, i);
                 return;
             }
         }

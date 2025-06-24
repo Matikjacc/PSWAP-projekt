@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <syslog.h>
+#include <errno.h>
 
 void game_init(Game *game) {
     for (int i = 0; i < BOARD_SIZE; i++) {
@@ -32,20 +34,20 @@ int game_make_move(Move *move, int player_id) {
         }
     }
     if (game == NULL) {
-        fprintf(stderr, "Game not found for player ID %d\n", player_id);
+        syslog(LOG_ERR, "Game not found for player ID %d", player_id);
         return -1; // Game not found
     }
     if (game->current_turn != (player_id == lobbies[i].players[0].player_id ? CELL_X : CELL_O)) {
-        fprintf(stderr, "It's not your turn, player ID %d\n", player_id);
+        syslog(LOG_ERR, "It's not your turn, player ID %d", player_id);
         return -2; // Not your turn
     }
     if (move->row < 0 || move->row >= BOARD_SIZE || move->col < 0 || move->col >= BOARD_SIZE) {
-        fprintf(stderr, "Invalid move coordinates: (%d, %d)\n", move->row, move->col);
+        syslog(LOG_ERR, "Invalid move coordinates: (%d, %d)", move->row, move->col);
         return -3; // Invalid move
     }
     if (game->board[move->row][move->col] != CELL_EMPTY)
     {
-        fprintf(stderr, "Cell (%d, %d) is already occupied\n", move->row, move->col);
+        syslog(LOG_ERR, "Cell (%d, %d) is already occupied", move->row, move->col);
         return -4; // Cell already occupied
     }
     game->board[move->row][move->col] = game->current_turn;
@@ -82,11 +84,11 @@ int game_make_move(Move *move, int player_id) {
     ssize_t total_size = sizeof(msg.type) + sizeof(msg.length) + msg.length;
     for (int j = 0; j < lobbies[i].player_count; j++) {
         if (send(lobbies[i].players[j].player_fd, &msg, total_size, 0) < 0) {
-            perror("send game result");
+            syslog(LOG_ERR, "send game result: %s", strerror(errno));
             return -4; // Error sending result 
         }
     }
-
+    return 0; // Move made successfully
 }
 
 GameStatus game_check_status(Game *game) {
@@ -169,7 +171,7 @@ void end_user_games(int player_fd) {
     for (int i = 0; i < MAX_LOBBIES; i++) {
         for (int j = 0; j < lobbies[i].player_count; j++) {
             if (lobbies[i].players[j].player_fd == player_fd) {
-                printf("Ending game for player %d in lobby %d\n", lobbies[i].players[j].player_id, lobbies[i].game.game_id);
+                syslog(LOG_INFO, "Ending game for player %d in lobby %d", lobbies[i].players[j].player_id, lobbies[i].game.game_id);
                 // Send to the other player that the game has ended and he won
                 TLVMessage msg;
                 msg.type = MSG_RESULT;
@@ -181,7 +183,7 @@ void end_user_games(int player_fd) {
                 for (int k = 0; k < lobbies[i].player_count; k++) {
                     if (lobbies[i].players[k].player_fd != player_fd) {
                         if (send(lobbies[i].players[k].player_fd, &msg, total_size, 0) < 0) {
-                            perror("send game result");
+                            syslog(LOG_ERR, "Błąd wysyłania wyniku gry: %s", strerror(errno));
                         }
                     }
                 }
